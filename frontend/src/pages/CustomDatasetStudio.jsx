@@ -1021,26 +1021,258 @@ export default function CustomDatasetStudio() {
       )}
 
       {/* ========================================================= */}
-      {/* STEP 7: DOWNLOAD PDF RESEARCH REPORT                      */}
+      {/* STEP 7: PRE-DOWNLOAD DATASET ANALYSIS & RESEARCH REPORT   */}
       {/* ========================================================= */}
       {currentStep === 7 && datasetId && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-8 text-center space-y-4">
-          <FileText className="h-16 w-16 text-cyan-400 mx-auto" />
-          <h3 className="text-xl font-black text-white">Download Scientific Research Report</h3>
-          <p className="text-xs text-slate-300 max-w-lg mx-auto leading-relaxed">
-            Generate an official, publication-quality PDF report containing dataset information, statistical distributions, preprocessing parameters, PennyLane circuit properties, and comprehensive Classical vs Quantum KNN metrics.
-          </p>
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-6 shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 border border-cyan-500/30">
+                  <FileText className="h-3.5 w-3.5" /> Executive Research Dossier
+                </span>
+                <h3 className="text-xl font-black text-white mt-2 flex items-center gap-2">
+                  Dataset Analysis Summary & Benchmark Report
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Complete technical profile and quantum empirical benchmark results for <strong className="text-cyan-400 font-mono">{overview?.filename || datasetId}</strong>.
+                </p>
+              </div>
 
-          <div className="pt-2">
-            <a
-              href={api.getReportDownloadUrl(datasetId)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-8 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer"
-            >
-              <Download className="h-4 w-4" />
-              Download Official PDF Research Report
-            </a>
+              {/* Direct Download Action Button */}
+              <a
+                href={api.getReportDownloadUrl(datasetId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer flex-shrink-0"
+              >
+                <Download className="h-4 w-4" /> Download Official PDF Report
+              </a>
+            </div>
+          </div>
+
+          {/* Section 1: Ingested Dataset Properties & Statistical Profiling */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-white border-b border-slate-800 pb-3">
+              <Database className="h-4 w-4 text-cyan-400" />
+              <span>1. Dataset Architecture & Quality Health</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Dataset Name</span>
+                <div className="text-sm font-black text-white mt-1 truncate">{overview?.filename || datasetId}</div>
+                <div className="text-[11px] text-cyan-400 font-mono mt-0.5">{overview?.memory_usage_mb ?? '--'} MB In-Memory</div>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Dimensions</span>
+                <div className="text-sm font-black text-white mt-1">{overview?.total_rows ?? '--'} Rows</div>
+                <div className="text-[11px] text-slate-400 font-mono mt-0.5">{overview?.total_columns ?? '--'} Total Features</div>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Data Quality</span>
+                <div className="text-sm font-black text-emerald-400 mt-1">
+                  {overview?.missing_value_count === 0 ? '✓ Zero Missing' : `${overview?.missing_value_count} Missing`}
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono mt-0.5">{overview?.duplicate_record_count ?? 0} Duplicates Handled</div>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Target Task</span>
+                <div className="text-sm font-black text-cyan-300 mt-1 capitalize">
+                  {profile?.task_identification?.subtype || profile?.task_identification?.task_type || 'Supervised Classification'}
+                </div>
+                <div className="text-[11px] text-indigo-300 font-mono mt-0.5">Target: {configInfo?.target_column || profile?.recommended_target}</div>
+              </div>
+            </div>
+
+            {/* Target Class Distribution */}
+            {profile?.target_distribution && (
+              <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-4">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block mb-2">
+                  Target Class Balance & Frequency
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(profile.target_distribution).map(([cls, cnt]) => (
+                    <span key={cls} className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 px-3 py-1.5 text-xs text-indigo-300 font-medium">
+                      <strong className="text-white capitalize">{cls}:</strong> {cnt} samples ({((cnt / (overview?.total_rows || 1)) * 100).toFixed(1)}%)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Mathematical Preprocessing & Quantum Qubit Mapping */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-white border-b border-slate-800 pb-3">
+              <Sliders className="h-4 w-4 text-cyan-400" />
+              <span>2. Mathematical Preprocessing & Qubit Dimension Mapping</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Train / Test Split</span>
+                <div className="text-sm font-bold text-white">
+                  {configInfo?.train_samples ?? '--'} Train / {configInfo?.test_samples ?? '--'} Test
+                </div>
+                <p className="text-[11px] text-slate-400">Stratified split with zero data leakage (scalers fit only on training data).</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Feature Selection & Qubits</span>
+                <div className="text-sm font-bold text-cyan-300">
+                  {configInfo?.qubit_count ?? '--'} Qubits ({configInfo?.selected_feature_count} features selected)
+                </div>
+                <div className="text-[11px] text-slate-400 truncate">
+                  Features: {configInfo?.selected_feature_names?.join(', ') || 'Auto-selected'}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">Quantum Rotation Mapping</span>
+                <div className="text-sm font-bold text-indigo-300 font-mono">θ = 2 · arctan(x) ∈ [-π, π]</div>
+                <p className="text-[11px] text-slate-400">Maps normalized feature values directly to Pauli rotation gate angles.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Empirical Model Performance Comparison */}
+          {results && (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-white">
+                  <GitCompare className="h-4 w-4 text-cyan-400" />
+                  <span>3. Empirical Benchmark: Classical KNN vs. PennyLane QKNN</span>
+                </div>
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+                  Winner: {results.performance_comparison?.higher_accuracy_model || 'Evaluated'}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[11px] font-bold uppercase text-slate-400 font-mono">
+                      <th className="py-2.5 px-3">Metric</th>
+                      <th className="py-2.5 px-3">Classical KNN (Scikit-Learn)</th>
+                      <th className="py-2.5 px-3">Quantum KNN (PennyLane)</th>
+                      <th className="py-2.5 px-3">Variance (Δ Q - C)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    <tr className="hover:bg-slate-850/50">
+                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Accuracy</td>
+                      <td className="py-2.5 px-3 text-white font-bold">{(results.classical_knn.accuracy * 100).toFixed(2)}%</td>
+                      <td className="py-2.5 px-3 text-cyan-300 font-bold">{(results.quantum_knn.accuracy * 100).toFixed(2)}%</td>
+                      <td className={`py-2.5 px-3 font-bold ${results.performance_comparison?.accuracy_delta >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {results.performance_comparison?.accuracy_delta >= 0 ? '+' : ''}{(results.performance_comparison?.accuracy_delta * 100).toFixed(2)}%
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-850/50">
+                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Macro F1-Score</td>
+                      <td className="py-2.5 px-3 text-white font-bold">{(results.classical_knn.f1_macro * 100).toFixed(2)}%</td>
+                      <td className="py-2.5 px-3 text-cyan-300 font-bold">{(results.quantum_knn.f1_macro * 100).toFixed(2)}%</td>
+                      <td className={`py-2.5 px-3 font-bold ${results.performance_comparison?.f1_delta >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {results.performance_comparison?.f1_delta >= 0 ? '+' : ''}{(results.performance_comparison?.f1_delta * 100).toFixed(2)}%
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-850/50">
+                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Precision (Macro)</td>
+                      <td className="py-2.5 px-3 text-white font-bold">{(results.classical_knn.precision_macro * 100).toFixed(2)}%</td>
+                      <td className="py-2.5 px-3 text-cyan-300 font-bold">{(results.quantum_knn.precision_macro * 100).toFixed(2)}%</td>
+                      <td className="py-2.5 px-3 text-slate-400">
+                        {((results.quantum_knn.precision_macro - results.classical_knn.precision_macro) * 100).toFixed(2)}%
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-850/50">
+                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Recall (Macro)</td>
+                      <td className="py-2.5 px-3 text-white font-bold">{(results.classical_knn.recall_macro * 100).toFixed(2)}%</td>
+                      <td className="py-2.5 px-3 text-cyan-300 font-bold">{(results.quantum_knn.recall_macro * 100).toFixed(2)}%</td>
+                      <td className="py-2.5 px-3 text-slate-400">
+                        {((results.quantum_knn.recall_macro - results.classical_knn.recall_macro) * 100).toFixed(2)}%
+                      </td>
+                    </tr>
+                    <tr className="hover:bg-slate-850/50">
+                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Prediction Time</td>
+                      <td className="py-2.5 px-3 text-slate-400 font-mono">{results.classical_knn.prediction_time_sec}s</td>
+                      <td className="py-2.5 px-3 text-amber-300 font-mono">{results.quantum_knn.prediction_time_sec}s</td>
+                      <td className="py-2.5 px-3 text-slate-400 font-mono">{results.performance_comparison?.latency_ratio}x ratio</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Quantum Circuit Architecture Telemetry */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block font-mono">Feature Map</span>
+                  <span className="text-xs font-black text-cyan-300 capitalize mt-1 block">
+                    {results.circuit_summary?.feature_map || 'Hybrid Map'}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block font-mono">Total Quantum Gates</span>
+                  <span className="text-xs font-black text-white mt-1 block">
+                    {results.circuit_summary?.total_gates ?? '--'} Gates
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block font-mono">CNOT Entanglement</span>
+                  <span className="text-xs font-black text-indigo-300 mt-1 block">
+                    {results.circuit_summary?.cnot_gates ?? 0} 2-Qubit Entanglers
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block font-mono">Quantum Simulator</span>
+                  <span className="text-xs font-black text-emerald-400 mt-1 block">default.qubit Active</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: Academic Takeaways for Guide / Viva Presentation */}
+          <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-slate-900 via-indigo-950/20 to-slate-900 p-6 space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-cyan-400" /> Key Research Findings to Present to Your Project Guide
+            </h4>
+            <ul className="space-y-2 text-xs text-slate-300 leading-relaxed list-disc list-inside">
+              <li>
+                <strong>Quantum Feature Encoding:</strong> Tabular features were successfully mapped into multi-qubit superposition and entangled states using parameterized Pauli rotations and CNOT ladder entanglement.
+              </li>
+              <li>
+                <strong>Fidelity-Based Distance Metric:</strong> Nearest neighbors were selected using genuine quantum state overlap fidelity $\mathcal{F} = |\langle\psi|\phi\rangle|^2$, replacing traditional Euclidean distance.
+              </li>
+              <li>
+                <strong>Empirical Performance:</strong> Quantum KNN achieved <strong>{results ? (results.quantum_knn.accuracy * 100).toFixed(1) + '%' : '--'}</strong> accuracy compared to <strong>{results ? (results.classical_knn.accuracy * 100).toFixed(1) + '%' : '--'}</strong> by Classical KNN on an identical stratified test partition.
+              </li>
+              <li>
+                <strong>Hardware Reality Disclosure:</strong> The simulation was executed on PennyLane's <code>default.qubit</code> statevector simulator. Physical QPU deployment on NISQ hardware would compute state overlap directly via quantum swap tests without classical matrix simulation overhead.
+              </li>
+            </ul>
+          </div>
+
+          {/* Bottom Callout & Download Button */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-8 text-center space-y-4">
+            <Download className="h-10 w-10 text-cyan-400 mx-auto animate-bounce" />
+            <h3 className="text-lg font-black text-white">Ready to Export Official Research Report?</h3>
+            <p className="text-xs text-slate-300 max-w-lg mx-auto leading-relaxed">
+              Click below to download the complete PDF report generated by ReportLab, incorporating all of the above tables, descriptive distributions, and quantum circuit diagrams for your viva documentation.
+            </p>
+
+            <div className="pt-2">
+              <a
+                href={api.getReportDownloadUrl(datasetId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-8 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer"
+              >
+                <Download className="h-4 w-4" /> Download Official PDF Research Report
+              </a>
+            </div>
           </div>
         </div>
       )}
