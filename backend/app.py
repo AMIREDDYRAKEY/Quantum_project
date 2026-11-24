@@ -57,6 +57,13 @@ def create_app() -> Flask:
                 "/api/benchmarks/paper-results",
                 "/api/benchmarks/live-results",
                 "/api/predict/single",
+                "/api/dataset/upload",
+                "/api/dataset/load-sample/<sample_name>",
+                "/api/dataset/<dataset_id>/profile",
+                "/api/dataset/<dataset_id>/configure",
+                "/api/dataset/<dataset_id>/train",
+                "/api/dataset/<dataset_id>/predict",
+                "/api/dataset/<dataset_id>/report",
             ],
         })
 

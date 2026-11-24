@@ -77,7 +77,8 @@ export default function CustomDatasetStudio() {
       }
     } catch (err) {
       console.error('Upload failed:', err);
-      setErrorMsg(err.response?.data?.message || 'Failed to upload dataset. Check format (.csv, .xlsx, .xls).');
+      const detail = err.response?.data?.message || err.message;
+      setErrorMsg(`Upload failed: ${detail}. If connecting to local server, ensure 'python backend/app.py' is running on port 5000.`);
     } finally {
       setLoading(false);
     }
@@ -96,7 +97,8 @@ export default function CustomDatasetStudio() {
       }
     } catch (err) {
       console.error('Load sample failed:', err);
-      setErrorMsg('Failed to load sample dataset.');
+      const detail = err.response?.data?.message || err.message;
+      setErrorMsg(`Failed to load sample dataset '${sampleName}': ${detail}. If connecting to local server, ensure 'python backend/app.py' is running on port 5000.`);
     } finally {
       setLoading(false);
     }
@@ -305,21 +307,30 @@ export default function CustomDatasetStudio() {
                   Test the complete pipeline immediately with one of the four reference datasets:
                 </p>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {[
-                    { id: 'iris', name: 'Iris Flower', rows: '150 rows', cols: '4 features' },
-                    { id: 'wine', name: 'Wine Dataset', rows: '178 rows', cols: '13 features' },
-                    { id: 'rain', name: 'Rain in Australia', rows: '216 rows', cols: '12 features' },
-                    { id: 'indian_liver', name: 'Indian Liver Patient', rows: '583 rows', cols: '10 features' },
+                    { id: 'iris', name: 'Iris Flower', rows: '150 rows', cols: '4 features', badge: 'Botany' },
+                    { id: 'student', name: 'Student Grades', rows: '150 rows', cols: '6 features', badge: 'Education' },
+                    { id: 'agriculture', name: 'Crop Harvest', rows: '160 rows', cols: '7 features', badge: 'Agriculture' },
+                    { id: 'social', name: 'Social Ads Action', rows: '180 rows', cols: '5 features', badge: 'Social Media' },
+                    { id: 'wine', name: 'Wine Dataset', rows: '178 rows', cols: '13 features', badge: 'Chemistry' },
+                    { id: 'indian_liver', name: 'Indian Liver Patient', rows: '583 rows', cols: '10 features', badge: 'Healthcare' },
                   ].map((s) => (
                     <button
                       key={s.id}
                       onClick={() => handleLoadSample(s.id)}
                       disabled={loading}
-                      className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 text-left transition hover:border-cyan-400 hover:bg-slate-850 cursor-pointer"
+                      className="rounded-xl border border-slate-800 bg-slate-950 p-3.5 text-left transition hover:border-cyan-400 hover:bg-slate-850 cursor-pointer flex flex-col justify-between"
                     >
-                      <div className="font-bold text-xs text-white capitalize">{s.name}</div>
-                      <div className="text-[11px] font-mono text-cyan-400 mt-0.5">{s.rows} &bull; {s.cols}</div>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800/40">
+                            {s.badge}
+                          </span>
+                        </div>
+                        <div className="font-bold text-xs text-white capitalize mt-1.5">{s.name}</div>
+                        <div className="text-[11px] font-mono text-slate-400 mt-0.5">{s.rows} &bull; {s.cols}</div>
+                      </div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 mt-2 block">
                         Load Dataset &rarr;
                       </span>

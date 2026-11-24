@@ -51,6 +51,12 @@ def load_sample_dataset(sample_name):
         "wine": "wine.csv",
         "rain": "rain.csv",
         "indian_liver": "indian_liver.csv",
+        "student": "student_performance.csv",
+        "student_performance": "student_performance.csv",
+        "agriculture": "agriculture_crop_recommendation.csv",
+        "crop": "agriculture_crop_recommendation.csv",
+        "social": "social_consumer_engagement.csv",
+        "social_consumer": "social_consumer_engagement.csv",
     }
     sample_key = sample_name.lower().strip()
     if sample_key not in filename_map:
