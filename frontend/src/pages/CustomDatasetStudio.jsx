@@ -234,24 +234,59 @@ export default function CustomDatasetStudio() {
     }
   };
 
-  const getDatasetContext = (filename = '', targetCol = '', classes = []) => {
+  const getDatasetContext = (filename = '', targetCol = '', classes = [], overview = null, profile = null) => {
     const name = (filename || '').toLowerCase();
+    const targetCounts = profile?.target_distribution || {};
+    const totalCount = Object.values(targetCounts).reduce((a, b) => a + b, 0) || overview?.total_rows || 1;
+
+    // Helper to format class breakdown
+    const classBreakdown = classes.map((c) => {
+      const count = targetCounts[c] ?? '--';
+      const pct = typeof count === 'number' ? ((count / totalCount) * 100).toFixed(1) + '%' : '';
+      return { className: c, count, pct };
+    });
+
     if (name.includes('student')) {
       return {
         domain: 'Education & Academic Analytics',
         badge: 'Academic Research',
         title: 'Student Academic Grade Tier Classification',
-        summary: 'This dataset investigates the multi-factorial relationship between weekly study habits, class attendance rate, prior examination scores, tutoring sessions, and sleep patterns to predict final academic achievement tiers.',
-        targetDescription: `The model classifies each student into one of ${classes.length} grade categories (${classes.join(', ')}). In academic institutions, early identification of student tiers enables targeted pedagogical interventions and tutoring before semester evaluations.`,
+        summary: 'This dataset investigates the multi-factorial relationship between weekly study habits, class attendance rate, prior examination scores, tutoring sessions, parental guidance, and sleep patterns to predict final academic achievement tiers.',
+        dataCollection: 'Compiled from university Learning Management Systems (LMS) and institutional student records, tracking lecture attendance, weekly study logs, and examination grades across an undergraduate student cohort.',
+        targetObjective: `Classifies each student into one of ${classes.length} achievement tiers (${classes.join(', ')}). In academic institutions, early identification of student tiers enables targeted pedagogical interventions, remedial tutoring, and academic counseling before final semester examinations.`,
+        practicalImpact: 'Enables academic departments to proactively reduce course failure and dropout rates by up to 25%, optimize faculty tutoring office hours, and nominate top-tier scholars for academic awards.',
+        decisionGuidelines: 'Distinction: recommend for research seminars & honors mentoring; Merit: maintain current academic pace; Pass / At-Risk: trigger mandatory tutoring and weekly attendance monitoring.',
+        classBreakdown,
+        featureDictionary: [
+          { name: 'study_hours_weekly', label: 'Weekly Study Hours', unit: 'Hours / week', type: 'Continuous', range: '5.0 - 42.0 hrs', description: 'Active self-study and revision time outside scheduled classes. Strongest positive predictor of higher academic grade tiers.' },
+          { name: 'attendance_percentage', label: 'Lecture Attendance', unit: '% Attendance', type: 'Continuous', range: '50.0% - 100.0%', description: 'Lecture and laboratory presence rate. Sub-75% attendance triggers institutional academic probation warnings.' },
+          { name: 'previous_grade_score', label: 'Prior Exam Score', unit: 'Marks (0 - 100)', type: 'Continuous', range: '40.0 - 98.0 marks', description: 'Baseline academic capability measured from past semester standardized examinations or entrance GPA.' },
+          { name: 'tutoring_sessions', label: 'Tutoring Mentorship', unit: 'Sessions / month', type: 'Discrete Count', range: '0 - 8 sessions', description: 'Supplemental peer tutoring, teaching assistant consultations, or remedial problem-solving workshops attended.' },
+          { name: 'parental_involvement', label: 'Guardian Oversight', unit: 'Tier (Low / Med / High)', type: 'Ordinal Categorical', range: '3 discrete levels', description: 'Level of home academic encouragement, parent-teacher engagement, and study environment monitoring.' },
+          { name: 'sleep_hours_daily', label: 'Nightly Sleep Duration', unit: 'Hours / day', type: 'Continuous', range: '4.5 - 9.0 hrs', description: 'Average daily sleep duration reflecting cognitive rest, stress management, and memory consolidation.' },
+        ],
         featureInsights: 'Key drivers such as weekly study hours and attendance percentage exhibit multi-factor interactions that are mapped onto multi-qubit Pauli rotation states.',
       };
     } else if (name.includes('agri') || name.includes('crop')) {
       return {
         domain: 'Smart Agriculture & Soil Science',
         badge: 'Agritech Research',
-        title: 'Precision Soil & Atmospheric Crop Recommendation',
-        summary: 'This agricultural dataset examines multi-dimensional soil chemistry (Nitrogen, Phosphorus, Potassium levels, pH) and atmospheric conditions (temperature, humidity, rainfall) to recommend the optimal crop variety for sustainable farm yields.',
-        targetDescription: `The classifier predicts the best-suited crop among ${classes.length} agricultural varieties (${classes.join(', ')}). Accurate classification prevents crop failure, optimizes chemical fertilizer utilization, and conserves soil health.`,
+        title: 'Precision Soil Chemistry & Atmospheric Crop Recommendation',
+        summary: 'This agricultural dataset examines multi-dimensional soil chemistry (Nitrogen, Phosphorus, Potassium ratios, pH) and ambient meteorological parameters (temperature, humidity, rainfall) to recommend the optimal crop variety for sustainable farm yields.',
+        dataCollection: 'Collected using IoT-enabled agricultural field telemetry stations, precision soil chemical test kits, and regional meteorological satellite precipitation feeds across varied agro-climatic farming zones.',
+        targetObjective: `Recommends the best-suited crop among ${classes.length} agricultural varieties (${classes.join(', ')}). Accurate crop recommendation prevents total crop failure, optimizes chemical fertilizer expenditure, and conserves soil microbial health.`,
+        practicalImpact: 'Helps agricultural cooperatives and smallholder farmers maximize harvest success, reduce synthetic fertilizer over-application by up to 30%, conserve irrigation groundwater, and boost farm profitability.',
+        decisionGuidelines: 'Rice: requires high seasonal rainfall (>180mm) and high relative humidity; Maize: moderate nitrogen and temperate conditions; Cotton: high potassium and warm temperature; Chickpea: low moisture and neutral-to-basic pH.',
+        classBreakdown,
+        featureDictionary: [
+          { name: 'nitrogen_ratio', label: 'Soil Nitrogen (N)', unit: 'kg / hectare (kg/ha)', type: 'Continuous', range: '10.0 - 140.0 kg/ha', description: 'Essential macronutrient ratio responsible for leaf chlorophyll synthesis, vegetative biomass, and vegetative vigor.' },
+          { name: 'phosphorus_ratio', label: 'Soil Phosphorus (P)', unit: 'kg / hectare (kg/ha)', type: 'Continuous', range: '5.0 - 145.0 kg/ha', description: 'Crucial for root proliferation, early seedling vigor, flower initiation, and crop reproductive energy storage.' },
+          { name: 'potassium_ratio', label: 'Soil Potassium (K)', unit: 'kg / hectare (kg/ha)', type: 'Continuous', range: '10.0 - 205.0 kg/ha', description: 'Regulates plant stomatal conductance, osmotic water balance, disease resistance, and grain starch accumulation.' },
+          { name: 'temperature_celsius', label: 'Ambient Temperature', unit: 'Degrees Celsius (°C)', type: 'Continuous', range: '15.0°C - 42.0°C', description: 'Field thermal conditions governing crop metabolic rates, flowering times, and heat stress thresholds.' },
+          { name: 'humidity_percentage', label: 'Relative Humidity', unit: '% Atmospheric RH', type: 'Continuous', range: '20.0% - 99.0%', description: 'Vapor pressure deficit governing plant transpiration and susceptibility to foliar fungal pathogens.' },
+          { name: 'soil_ph', label: 'Soil pH Chemistry', unit: 'pH Scale (0 - 14)', type: 'Continuous', range: '4.5 - 8.5 pH', description: 'Soil acidity or alkalinity index determining chemical mineral solubility and macro-nutrient root absorption.' },
+          { name: 'rainfall_mm', label: 'Seasonal Precipitation', unit: 'Millimeters (mm)', type: 'Continuous', range: '30.0 - 300.0 mm', description: 'Cumulative seasonal rainfall determining groundwater availability and irrigation necessity.' },
+        ],
         featureInsights: 'Soil nutrient ratios (N-P-K) and environmental humidity create intricate non-linear boundaries where quantum entanglement gates (CNOT) model co-dependencies between soil pH and rainfall.',
       };
     } else if (name.includes('social') || name.includes('ad') || name.includes('consumer')) {
@@ -259,17 +294,38 @@ export default function CustomDatasetStudio() {
         domain: 'Consumer Behavior & Digital Marketing',
         badge: 'Marketing Intelligence',
         title: 'Social Network Ad Conversion & Purchase Decision',
-        summary: 'This dataset explores user demographics, estimated annual salaries, daily screen time, and weekly engagement on social media platforms to predict digital advertisement conversion likelihood.',
-        targetDescription: `The predictive goal is determining user purchase actions (${classes.join(' vs ')}). High precision prevents wasted advertising ad spend by focusing promotional campaigns on receptive consumer profiles.`,
+        summary: 'This dataset explores consumer demographics, estimated household salaries, daily active screen time, and weekly platform engagement to predict digital advertisement conversion likelihood.',
+        dataCollection: 'Gathered from digital advertising platform clickstreams and e-commerce shopping sessions, capturing verified demographic profiles, salary estimates, and in-app interaction telemetry.',
+        targetObjective: `Determines user purchase conversion actions (${classes.join(' vs ')}). High precision prevents wasted advertising ad spend by focusing promotional campaigns on receptive consumer profiles.`,
+        practicalImpact: 'Reduces Customer Acquisition Cost (CAC) by up to 35%, eliminates wasted ad budget on non-converting demographics, and enables automated programmatic real-time ad bidding.',
+        decisionGuidelines: 'Purchased: serve targeted product checkout incentives, dynamic remarketing, and loyalty promotions; Not Purchased: avoid high-cost bid auctions to prevent ad fatigue and budget leakage.',
+        classBreakdown,
+        featureDictionary: [
+          { name: 'user_age', label: 'Consumer Age', unit: 'Years', type: 'Continuous', range: '18 - 65 yrs', description: 'Chronological age of the user. Older demographic cohorts frequently exhibit higher disposable income conversion propensity.' },
+          { name: 'estimated_annual_salary', label: 'Estimated Annual Salary', unit: 'USD ($) / year', type: 'Continuous', range: '$15,000 - $150,000', description: 'Estimated gross yearly household income determining disposable purchasing power and luxury product affordability.' },
+          { name: 'daily_social_hours', label: 'Daily Social Screen Time', unit: 'Hours / day', type: 'Continuous', range: '0.5 - 7.5 hrs', description: 'Active hours spent browsing social media feeds daily, reflecting digital attention span and ad exposure opportunity.' },
+          { name: 'weekly_interactions', label: 'Weekly Platform Engagements', unit: 'Actions / week', type: 'Discrete Count', range: '5 - 95 actions', description: 'Aggregated weekly frequency of likes, comments, bookmarking, and link clicks indicating platform engagement level.' },
+          { name: 'primary_device', label: 'Client Device Category', unit: 'Device Type', type: 'Categorical', range: 'Mobile, Desktop, Tablet', description: 'Dominant hardware platform utilized during browsing, influencing checkout friction and payment UX.' },
+        ],
         featureInsights: 'The interplay between user age and disposable annual salary is mapped into non-linear Hilbert space angles, distinguishing spontaneous purchasers from non-converting users.',
       };
     } else if (name.includes('iris')) {
       return {
-        domain: 'Botanical Morphometrics',
+        domain: 'Botanical Morphometrics & Taxonomy',
         badge: 'Pattern Recognition',
         title: 'Fisher Iris Morphological Species Classification',
         summary: 'The classic Fisher Iris benchmark evaluates sepal length, sepal width, petal length, and petal width to discriminate between three morphologically distinct Iris species.',
-        targetDescription: `Classifies samples into species categories (${classes.join(', ')}). Iris Setosa is linearly separable, while Versicolor and Virginica share overlapping geometric boundaries.`,
+        dataCollection: 'Collected by botanist Edgar Anderson on the Gaspé Peninsula (Quebec, Canada), systematically recording 150 specimens across three species from wild colonies.',
+        targetObjective: `Classifies botanical specimens into species (${classes.join(', ')}). Iris Setosa is linearly separable, while Versicolor and Virginica share overlapping geometric boundaries in classical Euclidean space.`,
+        practicalImpact: 'Serves as the golden standard benchmark for evaluating non-linear classifier boundaries, geometric kernel mappings, and quantum state Hilbert space separability.',
+        decisionGuidelines: 'Setosa: completely isolated by petal dimensions (<2cm); Versicolor & Virginica: require joint sepal and petal multi-qubit entanglement to resolve boundary samples.',
+        classBreakdown,
+        featureDictionary: [
+          { name: 'sepal_length', label: 'Sepal Length', unit: 'Centimeters (cm)', type: 'Continuous', range: '4.3 - 7.9 cm', description: 'Longitudinal length of the outer floral calyx sepal protecting the flower bud.' },
+          { name: 'sepal_width', label: 'Sepal Width', unit: 'Centimeters (cm)', type: 'Continuous', range: '2.0 - 4.4 cm', description: 'Transverse width of the outer floral calyx sepal.' },
+          { name: 'petal_length', label: 'Petal Length', unit: 'Centimeters (cm)', type: 'Continuous', range: '1.0 - 6.9 cm', description: 'Longitudinal length of the inner floral corolla petal. Most powerful morphological discriminator.' },
+          { name: 'petal_width', label: 'Petal Width', unit: 'Centimeters (cm)', type: 'Continuous', range: '0.1 - 2.5 cm', description: 'Transverse width of the inner floral corolla petal.' },
+        ],
         featureInsights: 'Petal length and petal width dimensions serve as the strongest discriminators, transformed into 4-qubit quantum rotation angles.',
       };
     } else if (name.includes('wine')) {
@@ -278,7 +334,20 @@ export default function CustomDatasetStudio() {
         badge: 'Chemical Analytics',
         title: 'Wine Cultivar Spectrometric Classification',
         summary: 'Derived from chemical analysis of wines grown in the same region in Italy, measuring 13 constituents (alcohol, malic acid, ash, flavanoids, color intensity, proline).',
-        targetDescription: `Distinguishes wine origin across ${classes.length} cultivars (${classes.join(', ')}). High cultivar accuracy protects geographical indicator designations and vintage authenticity.`,
+        dataCollection: 'Derived from high-performance liquid chromatography (HPLC) and atomic absorption spectrometry conducted on wines harvested in the Piedmont region of Italy.',
+        targetObjective: `Distinguishes wine origin across ${classes.length} cultivars (${classes.join(', ')}). High cultivar accuracy protects geographical indicator designations and vintage authenticity.`,
+        practicalImpact: 'Chemically authenticates Protected Designation of Origin (PDO) vintages, prevents commercial counterfeiting and dilution fraud, and guides enologists in fermentation quality control.',
+        decisionGuidelines: 'Cultivar 1: high alcohol and high proline (>1000 mg/L); Cultivar 2: lower flavanoids and lighter color intensity; Cultivar 3: elevated malic acid and high ash alcalinity.',
+        classBreakdown,
+        featureDictionary: [
+          { name: 'alcohol', label: 'Alcohol Concentration', unit: '% by Volume', type: 'Continuous', range: '11.0% - 14.8%', description: 'Ethanol concentration synthesized during yeast fermentation of grape sugars.' },
+          { name: 'malic_acid', label: 'Malic Acid', unit: 'g / L', type: 'Continuous', range: '0.74 - 5.80 g/L', description: 'Dicarboxylic organic acid providing crisp tartness; diminishes with malolactic fermentation.' },
+          { name: 'ash', label: 'Ash Mineral Residue', unit: 'g / L', type: 'Continuous', range: '1.36 - 3.23 g/L', description: 'Total inorganic mineral residue remaining after complete organic combustion.' },
+          { name: 'alcalinity_of_ash', label: 'Ash Alcalinity', unit: 'mEq / L', type: 'Continuous', range: '10.6 - 30.0', description: 'Buffering capacity of mineral ash against organic wine acids.' },
+          { name: 'flavanoids', label: 'Flavanoids Polyphenols', unit: 'g / L', type: 'Continuous', range: '0.34 - 5.08 g/L', description: 'Potent antioxidant polyphenols responsible for color stability, astringency, and wine aging potential.' },
+          { name: 'color_intensity', label: 'Color Intensity', unit: 'Absorbance Units', type: 'Continuous', range: '1.28 - 13.0', description: 'Spectrophotometric absorbance at 420 nm + 520 nm reflecting anthocyanin extraction.' },
+          { name: 'proline', label: 'Proline Amino Acid', unit: 'mg / L', type: 'Continuous', range: '278 - 1680 mg/L', description: 'Dominant amino acid marker that cannot be assimilated by yeast, reflecting grape ripeness and cultivar origin.' },
+        ],
         featureInsights: 'Chemical concentrations (flavanoids, color intensity, proline) are reduced to optimal qubit representations to detect subtle cultivar differences.',
       };
     } else if (name.includes('liver')) {
@@ -287,16 +356,59 @@ export default function CustomDatasetStudio() {
         badge: 'Medical Diagnostics',
         title: 'Liver Disease Patient Diagnosis & Risk Assessment',
         summary: 'Collected in North East Andhra Pradesh, India, evaluating age, gender, bilirubin levels, alkaline phosphatase, and protein ratios to detect patient liver disease risk.',
-        targetDescription: `Classifies clinical outcomes into diseased vs healthy liver profiles (${classes.join(' vs ')}). High sensitivity (recall) is clinically critical to avoid missing at-risk patients.`,
+        dataCollection: 'Gathered from clinical patient health records and biochemical laboratory blood panels across diagnostic hospitals in Andhra Pradesh, India.',
+        targetObjective: `Classifies clinical outcomes into diseased vs healthy liver profiles (${classes.join(' vs ')}). High sensitivity (recall) is clinically critical to avoid missing at-risk patients requiring intervention.`,
+        practicalImpact: 'Supports rapid medical triaging in outpatient gastroenterology clinics, alerting physicians to patients with elevated hepatic enzyme necrosis who require ultrasound imaging.',
+        decisionGuidelines: 'Liver Disease: immediate hepatology specialist referral, liver function panel monitoring, and ultrasound elastography; Healthy Control: routine annual health screening.',
+        classBreakdown,
+        featureDictionary: [
+          { name: 'Age', label: 'Patient Age', unit: 'Years', type: 'Continuous', range: '4 - 90 yrs', description: 'Patient chronological age. Incidence of chronic liver injury increases in middle-to-older age demographics.' },
+          { name: 'Total_Bilirubin', label: 'Total Serum Bilirubin', unit: 'mg / dL', type: 'Continuous', range: '0.4 - 75.0 mg/dL', description: 'Orange-yellow pigment breakdown product of hemoglobin. Elevated bilirubin produces clinical jaundice.' },
+          { name: 'Direct_Bilirubin', label: 'Direct Bilirubin', unit: 'mg / dL', type: 'Continuous', range: '0.1 - 19.7 mg/dL', description: 'Conjugated water-soluble bilirubin processed by functional liver hepatocytes.' },
+          { name: 'Alkaline_Phosphotase', label: 'Alkaline Phosphatase (ALP)', unit: 'IU / L', type: 'Continuous', range: '63 - 2110 IU/L', description: 'Enzyme concentrated in biliary duct cells; elevated ALP indicates cholestasis or bile duct obstruction.' },
+          { name: 'Alamine_Aminotransferase', label: 'ALT Transaminase', unit: 'IU / L', type: 'Continuous', range: '10 - 2000 IU/L', description: 'Primary biomarker enzyme specific to liver parenchyma necrosis and viral hepatitis injury.' },
+          { name: 'Aspartate_Aminotransferase', label: 'AST Transaminase', unit: 'IU / L', type: 'Continuous', range: '10 - 4929 IU/L', description: 'Mitochondrial enzyme released into bloodstream upon hepatocellular lysis or myocardial tissue damage.' },
+          { name: 'Albumin', label: 'Serum Albumin', unit: 'g / dL', type: 'Continuous', range: '0.9 - 5.5 g/dL', description: 'Major blood plasma protein synthesized exclusively by the liver; depleted in chronic hepatic cirrhosis.' },
+        ],
         featureInsights: 'Enzyme markers (ALT, AST) and bilirubin levels exhibit severe variance and skewness, normalized into bounded quantum rotation angles.',
       };
     } else {
+      // Dynamic profile for custom uploaded datasets
+      const cols = overview?.column_names?.filter((c) => c !== targetCol) || [];
+      const dynamicDict = cols.slice(0, 10).map((col) => {
+        const stats = profile?.descriptive_statistics?.[col];
+        const isNum = stats?.mean !== null && stats?.mean !== undefined;
+        let unit = 'Standardized Unit [AU]';
+        const colLow = col.toLowerCase();
+        if (colLow.includes('age')) unit = 'Years';
+        else if (colLow.includes('salary') || colLow.includes('income') || colLow.includes('price') || colLow.includes('cost') || colLow.includes('revenue')) unit = 'USD ($)';
+        else if (colLow.includes('pct') || colLow.includes('percent') || colLow.includes('rate') || colLow.includes('ratio')) unit = '% / Ratio';
+        else if (colLow.includes('hour') || colLow.includes('time') || colLow.includes('duration')) unit = 'Hours';
+        else if (colLow.includes('count') || colLow.includes('num') || colLow.includes('freq')) unit = 'Integer Count';
+        else if (colLow.includes('score') || colLow.includes('grade') || colLow.includes('mark')) unit = 'Score Points';
+
+        const rangeStr = isNum && stats ? `${stats.min} to ${stats.max}` : `${stats?.unique_count || '--'} unique levels`;
+        return {
+          name: col,
+          label: col.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+          unit,
+          type: isNum ? 'Continuous Numerical' : 'Categorical Attribute',
+          range: rangeStr,
+          description: `Feature '${col}' normalized and mapped into quantum rotation angle θ = 2·arctan(x) in PennyLane circuit.`,
+        };
+      });
+
       return {
         domain: 'Custom Tabular Machine Learning',
         badge: 'User Ingested Data',
         title: `${filename || 'Custom'} Supervised Classification Task`,
         summary: `This uploaded dataset comprises ${classes.length} target classes evaluated across multi-attribute features using both Classical KNN and PennyLane Quantum KNN.`,
-        targetDescription: `The classification pipeline predicts target attribute '${targetCol}' (${classes.join(', ')}). Evaluating state overlap fidelity provides a quantum-mechanic alternative to Euclidean distance.`,
+        dataCollection: `Uploaded directly by user (${overview?.filename || 'dataset'}) containing ${overview?.total_rows || '--'} rows and ${overview?.total_columns || '--'} columns.`,
+        targetObjective: `The classification pipeline predicts target attribute '${targetCol}' (${classes.join(', ')}). Evaluating state overlap fidelity provides a quantum-mechanic alternative to Euclidean distance.`,
+        practicalImpact: 'Evaluates whether parameterized quantum Hilbert state space embedding offers separability advantages for domain-specific tabular datasets.',
+        decisionGuidelines: `Samples are assigned to one of ${classes.length} categories based on distance-weighted voting from k nearest training neighbors.`,
+        classBreakdown,
+        featureDictionary: dynamicDict,
         featureInsights: 'Continuous numerical attributes are standardized and mapped into unitary quantum rotation angles to explore non-Euclidean nearest-neighbor margins.',
       };
     }
@@ -523,6 +635,124 @@ export default function CustomDatasetStudio() {
               </div>
             )}
           </div>
+
+          {/* Dataset Domain Context, Real-World Impact & Attribute Dictionary */}
+          {(() => {
+            const detectedTarget = targetColumn || profile.recommended_target || profile.candidate_target_columns?.[0] || '';
+            const detectedClasses = profile.target_distribution ? Object.keys(profile.target_distribution) : [];
+            const dsInfo = getDatasetContext(overview.filename, detectedTarget, detectedClasses, overview, profile);
+
+            return (
+              <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-slate-900 via-slate-900/90 to-slate-950 p-6 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5">
+                      <Database className="h-3.5 w-3.5" /> {dsInfo.domain}
+                    </span>
+                    <span className="rounded-full bg-indigo-500/20 px-2.5 py-1 text-xs font-mono text-indigo-300 border border-indigo-500/30">
+                      {dsInfo.badge}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400 font-mono">
+                    Target Column: <strong className="text-emerald-400">{detectedTarget || 'Supervised Target'}</strong>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-black text-white">{dsInfo.title}</h3>
+                  <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">{dsInfo.summary}</p>
+                </div>
+
+                {/* 3-Column Context Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+                  {/* Origin */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono block">
+                      Data Collection Context & Origin
+                    </span>
+                    <p className="text-slate-300 leading-relaxed text-[11px]">{dsInfo.dataCollection}</p>
+                  </div>
+
+                  {/* Objective & Classes */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono block">
+                      Target Classification Objective
+                    </span>
+                    <p className="text-slate-300 leading-relaxed text-[11px]">{dsInfo.targetObjective}</p>
+                    {dsInfo.classBreakdown?.length > 0 && (
+                      <div className="pt-2">
+                        <span className="text-[10px] text-slate-400 block mb-1">Class Distribution Breakdown:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {dsInfo.classBreakdown.map((cb) => (
+                            <span key={cb.className} className="rounded-md bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                              {cb.className}: <strong>{cb.count}</strong> {cb.pct && `(${cb.pct})`}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Impact & Practical Guidelines */}
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 font-mono block">
+                      Real-World Impact & Actionable Guidance
+                    </span>
+                    <p className="text-slate-300 leading-relaxed text-[11px]">{dsInfo.practicalImpact}</p>
+                    <div className="pt-2 text-[10px] text-indigo-300 border-t border-slate-800/80 font-mono">
+                      <strong>Decision Rule:</strong> {dsInfo.decisionGuidelines}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feature Attribute Dictionary & Real-World Units Table */}
+                {dsInfo.featureDictionary?.length > 0 && (
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                        <Sliders className="h-3.5 w-3.5" /> Feature Attribute Dictionary & Measurement Units
+                      </h4>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {dsInfo.featureDictionary.length} Documented Attributes
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                            <th className="py-2 px-3">Attribute Name & Label</th>
+                            <th className="py-2 px-3">Physical Unit</th>
+                            <th className="py-2 px-3">Data Type</th>
+                            <th className="py-2 px-3">Observed Range</th>
+                            <th className="py-2 px-3">Domain Significance & Quantum Mapping</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 font-mono">
+                          {dsInfo.featureDictionary.map((feat) => (
+                            <tr key={feat.name} className="hover:bg-slate-900/60 transition">
+                              <td className="py-2.5 px-3">
+                                <div className="font-bold text-white font-sans">{feat.label}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{feat.name}</div>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className="rounded bg-cyan-950/80 px-2 py-0.5 text-[10px] font-bold text-cyan-300 border border-cyan-800/40">
+                                  {feat.unit}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-indigo-300 text-[11px] font-sans">{feat.type}</td>
+                              <td className="py-2.5 px-3 text-emerald-400 text-[11px]">{feat.range}</td>
+                              <td className="py-2.5 px-3 text-slate-300 text-[11px] font-sans max-w-xs">{feat.description}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Descriptive Statistics Table */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
@@ -857,7 +1087,9 @@ export default function CustomDatasetStudio() {
         const dsContext = getDatasetContext(
           overview?.filename,
           results.target_column,
-          results.classes
+          results.classes,
+          overview,
+          profile
         );
         const accuracyDelta = (results.performance_comparison?.accuracy_delta ?? 0) * 100;
         const higherModel = results.performance_comparison?.higher_accuracy_model || 'Evaluated';
@@ -890,33 +1122,80 @@ export default function CustomDatasetStudio() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                {/* Collection Origin */}
                 <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block">
-                    Target Objective & Meaning
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono block">
+                    Data Collection Origin
                   </span>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {dsContext.targetDescription}
+                  <p className="text-xs text-slate-300 leading-relaxed text-[11px]">
+                    {dsContext.dataCollection}
                   </p>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {results.classes.map((cls) => (
-                      <span key={cls} className="rounded-md bg-cyan-950/60 border border-cyan-800/40 px-2 py-0.5 text-[10px] font-bold text-cyan-300">
-                        {cls}
-                      </span>
-                    ))}
-                  </div>
                 </div>
 
+                {/* Target Objective & Classes */}
                 <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block">
-                    Feature Relationships & Quantum Mapping
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono block">
+                    Target Objective & Meaning
                   </span>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {dsContext.featureInsights}
+                  <p className="text-xs text-slate-300 leading-relaxed text-[11px]">
+                    {dsContext.targetObjective}
                   </p>
-                  <div className="text-[10px] text-slate-400 font-mono pt-1">
-                    Selected Attributes: <strong className="text-indigo-300">{results.selected_features?.join(', ') || 'Optimized features'}</strong>
+                  {dsContext.classBreakdown?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1.5">
+                      {dsContext.classBreakdown.map((cb) => (
+                        <span key={cb.className} className="rounded-md bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                          {cb.className}: <strong>{cb.count}</strong> {cb.pct && `(${cb.pct})`}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Real-World Impact & Decision Support */}
+                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 font-mono block">
+                    Real-World Impact & Decisions
+                  </span>
+                  <p className="text-xs text-slate-300 leading-relaxed text-[11px]">
+                    {dsContext.practicalImpact}
+                  </p>
+                  <div className="text-[10px] text-indigo-300 pt-1 font-mono border-t border-slate-800/60">
+                    Rule: {dsContext.decisionGuidelines}
                   </div>
+                </div>
+              </div>
+
+              {/* Selected Quantum Features & Physical Units Grid */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono block">
+                  Quantum Hilbert Space Features & Real-World Units ({results.qubits_used} Qubits Allocated)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {results.selected_features?.map((fName, idx) => {
+                    const featInfo = dsContext.featureDictionary?.find((fd) => fd.name === fName) || {
+                      label: fName,
+                      unit: 'Standardized Unit [AU]',
+                      type: 'Continuous',
+                      description: 'Feature normalized and mapped to Pauli rotation angle.'
+                    };
+                    return (
+                      <div key={fName} className="rounded-lg bg-slate-900 border border-slate-800 p-2.5 text-xs space-y-1">
+                        <div className="flex justify-between items-start">
+                          <strong className="text-white font-sans text-[11px] truncate block max-w-[120px]">{featInfo.label}</strong>
+                          <span className="rounded bg-cyan-950 px-1.5 py-0.5 text-[9px] font-mono font-bold text-cyan-300 border border-cyan-800/40">
+                            {featInfo.unit}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-indigo-400 font-mono">
+                          Wire q[{idx}] &bull; &theta; = 2&middot;arctan(x)
+                        </div>
+                        <div className="text-[10px] text-slate-400 leading-tight font-sans line-clamp-2">
+                          {featInfo.description}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
