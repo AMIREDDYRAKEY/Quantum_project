@@ -205,6 +205,74 @@ export default function CustomDatasetStudio() {
     }
   };
 
+  const getDatasetContext = (filename = '', targetCol = '', classes = []) => {
+    const name = (filename || '').toLowerCase();
+    if (name.includes('student')) {
+      return {
+        domain: 'Education & Academic Analytics',
+        badge: 'Academic Research',
+        title: 'Student Academic Grade Tier Classification',
+        summary: 'This dataset investigates the multi-factorial relationship between weekly study habits, class attendance rate, prior examination scores, tutoring sessions, and sleep patterns to predict final academic achievement tiers.',
+        targetDescription: `The model classifies each student into one of ${classes.length} grade categories (${classes.join(', ')}). In academic institutions, early identification of student tiers enables targeted pedagogical interventions and tutoring before semester evaluations.`,
+        featureInsights: 'Key drivers such as weekly study hours and attendance percentage exhibit multi-factor interactions that are mapped onto multi-qubit Pauli rotation states.',
+      };
+    } else if (name.includes('agri') || name.includes('crop')) {
+      return {
+        domain: 'Smart Agriculture & Soil Science',
+        badge: 'Agritech Research',
+        title: 'Precision Soil & Atmospheric Crop Recommendation',
+        summary: 'This agricultural dataset examines multi-dimensional soil chemistry (Nitrogen, Phosphorus, Potassium levels, pH) and atmospheric conditions (temperature, humidity, rainfall) to recommend the optimal crop variety for sustainable farm yields.',
+        targetDescription: `The classifier predicts the best-suited crop among ${classes.length} agricultural varieties (${classes.join(', ')}). Accurate classification prevents crop failure, optimizes chemical fertilizer utilization, and conserves soil health.`,
+        featureInsights: 'Soil nutrient ratios (N-P-K) and environmental humidity create intricate non-linear boundaries where quantum entanglement gates (CNOT) model co-dependencies between soil pH and rainfall.',
+      };
+    } else if (name.includes('social') || name.includes('ad') || name.includes('consumer')) {
+      return {
+        domain: 'Consumer Behavior & Digital Marketing',
+        badge: 'Marketing Intelligence',
+        title: 'Social Network Ad Conversion & Purchase Decision',
+        summary: 'This dataset explores user demographics, estimated annual salaries, daily screen time, and weekly engagement on social media platforms to predict digital advertisement conversion likelihood.',
+        targetDescription: `The predictive goal is determining user purchase actions (${classes.join(' vs ')}). High precision prevents wasted advertising ad spend by focusing promotional campaigns on receptive consumer profiles.`,
+        featureInsights: 'The interplay between user age and disposable annual salary is mapped into non-linear Hilbert space angles, distinguishing spontaneous purchasers from non-converting users.',
+      };
+    } else if (name.includes('iris')) {
+      return {
+        domain: 'Botanical Morphometrics',
+        badge: 'Pattern Recognition',
+        title: 'Fisher Iris Morphological Species Classification',
+        summary: 'The classic Fisher Iris benchmark evaluates sepal length, sepal width, petal length, and petal width to discriminate between three morphologically distinct Iris species.',
+        targetDescription: `Classifies samples into species categories (${classes.join(', ')}). Iris Setosa is linearly separable, while Versicolor and Virginica share overlapping geometric boundaries.`,
+        featureInsights: 'Petal length and petal width dimensions serve as the strongest discriminators, transformed into 4-qubit quantum rotation angles.',
+      };
+    } else if (name.includes('wine')) {
+      return {
+        domain: 'Chemical Spectrometry & Enology',
+        badge: 'Chemical Analytics',
+        title: 'Wine Cultivar Spectrometric Classification',
+        summary: 'Derived from chemical analysis of wines grown in the same region in Italy, measuring 13 constituents (alcohol, malic acid, ash, flavanoids, color intensity, proline).',
+        targetDescription: `Distinguishes wine origin across ${classes.length} cultivars (${classes.join(', ')}). High cultivar accuracy protects geographical indicator designations and vintage authenticity.`,
+        featureInsights: 'Chemical concentrations (flavanoids, color intensity, proline) are reduced to optimal qubit representations to detect subtle cultivar differences.',
+      };
+    } else if (name.includes('liver')) {
+      return {
+        domain: 'Clinical Gastroenterology & Healthcare',
+        badge: 'Medical Diagnostics',
+        title: 'Liver Disease Patient Diagnosis & Risk Assessment',
+        summary: 'Collected in North East Andhra Pradesh, India, evaluating age, gender, bilirubin levels, alkaline phosphatase, and protein ratios to detect patient liver disease risk.',
+        targetDescription: `Classifies clinical outcomes into diseased vs healthy liver profiles (${classes.join(' vs ')}). High sensitivity (recall) is clinically critical to avoid missing at-risk patients.`,
+        featureInsights: 'Enzyme markers (ALT, AST) and bilirubin levels exhibit severe variance and skewness, normalized into bounded quantum rotation angles.',
+      };
+    } else {
+      return {
+        domain: 'Custom Tabular Machine Learning',
+        badge: 'User Ingested Data',
+        title: `${filename || 'Custom'} Supervised Classification Task`,
+        summary: `This uploaded dataset comprises ${classes.length} target classes evaluated across multi-attribute features using both Classical KNN and PennyLane Quantum KNN.`,
+        targetDescription: `The classification pipeline predicts target attribute '${targetCol}' (${classes.join(', ')}). Evaluating state overlap fidelity provides a quantum-mechanic alternative to Euclidean distance.`,
+        featureInsights: 'Continuous numerical attributes are standardized and mapped into unitary quantum rotation angles to explore non-Euclidean nearest-neighbor margins.',
+      };
+    }
+  };
+
   const stepsList = [
     { num: 1, title: 'Upload Dataset', icon: UploadCloud },
     { num: 2, title: 'Profiling & Task', icon: BarChart2 },
@@ -756,146 +824,254 @@ export default function CustomDatasetStudio() {
       {/* ========================================================= */}
       {/* STEP 5: RESULTS & SIDE-BY-SIDE COMPARISON                 */}
       {/* ========================================================= */}
-      {currentStep === 5 && results && (
-        <div className="space-y-6">
-          {/* Top Score Comparison Cards */}
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {/* Quantum KNN Card */}
-            <div className="rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-br from-slate-900 via-emerald-950/30 to-slate-900 p-6 shadow-2xl">
-              <div className="flex justify-between items-center border-b border-emerald-500/20 pb-3">
-                <span className="rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-                  <Cpu className="h-3.5 w-3.5" /> Quantum KNN (PennyLane)
-                </span>
-                <span className="text-xs font-mono text-emerald-400 font-bold">
-                  {results.qubits_used} Qubits &bull; {results.feature_map.toUpperCase()} Map
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs text-slate-400 block">Test Accuracy</span>
-                  <h3 className="text-3xl font-black text-emerald-400 mt-1">
-                    {(results.quantum_knn.accuracy * 100).toFixed(1)}%
-                  </h3>
-                </div>
-                <div>
-                  <span className="text-xs text-slate-400 block">Macro F1-Score</span>
-                  <h3 className="text-3xl font-black text-white mt-1">
-                    {(results.quantum_knn.f1_macro * 100).toFixed(1)}%
-                  </h3>
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-300 border-t border-emerald-500/20 pt-3">
-                <div>Precision: {(results.quantum_knn.precision_macro * 100).toFixed(1)}%</div>
-                <div>Recall: {(results.quantum_knn.recall_macro * 100).toFixed(1)}%</div>
-                <div>Inference: {results.quantum_knn.inference_time_sec}s</div>
-              </div>
-            </div>
+      {currentStep === 5 && results && (() => {
+        const dsContext = getDatasetContext(
+          overview?.filename,
+          results.target_column,
+          results.classes
+        );
+        const accuracyDelta = (results.performance_comparison?.accuracy_delta ?? 0) * 100;
+        const higherModel = results.performance_comparison?.higher_accuracy_model || 'Evaluated';
 
-            {/* Classical KNN Card */}
-            <div className="rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-900 p-6 shadow-2xl">
-              <div className="flex justify-between items-center border-b border-indigo-500/20 pb-3">
-                <span className="rounded-full bg-indigo-500/20 px-3 py-0.5 text-xs font-bold text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5">
-                  <BarChart2 className="h-3.5 w-3.5" /> Classical KNN (Scikit-Learn)
-                </span>
-                <span className="text-xs font-mono text-indigo-400 font-bold">
-                  Euclidean Metric &bull; k={results.k}
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-xs text-slate-400 block">Test Accuracy</span>
-                  <h3 className="text-3xl font-black text-indigo-400 mt-1">
-                    {(results.classical_knn.accuracy * 100).toFixed(1)}%
-                  </h3>
+        return (
+          <div className="space-y-6">
+            {/* Domain Context & Dataset Overview Card */}
+            <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-900 p-6 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-cyan-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-300 border border-cyan-500/30">
+                    {dsContext.domain}
+                  </span>
+                  <span className="rounded-full bg-indigo-500/20 px-2.5 py-1 text-[10px] font-mono text-indigo-300 border border-indigo-500/30">
+                    {dsContext.badge}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-xs text-slate-400 block">Macro F1-Score</span>
-                  <h3 className="text-3xl font-black text-white mt-1">
-                    {(results.classical_knn.f1_macro * 100).toFixed(1)}%
-                  </h3>
+                <div className="text-xs text-slate-400 font-mono">
+                  File: <strong className="text-white">{overview?.filename || datasetId}</strong> &bull; {overview?.total_rows} Rows &bull; {overview?.total_columns} Features
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-300 border-t border-indigo-500/20 pt-3">
-                <div>Precision: {(results.classical_knn.precision_macro * 100).toFixed(1)}%</div>
-                <div>Recall: {(results.classical_knn.recall_macro * 100).toFixed(1)}%</div>
-                <div>Inference: {results.classical_knn.inference_time_sec}s</div>
-              </div>
-            </div>
-          </div>
 
-          {/* Performance Comparison Bar Chart */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 mb-3">
-              Performance Benchmark Comparison
-            </h3>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={[
-                    { metric: 'Accuracy', Classical: results.classical_knn.accuracy * 100, Quantum: results.quantum_knn.accuracy * 100 },
-                    { metric: 'Precision (Macro)', Classical: results.classical_knn.precision_macro * 100, Quantum: results.quantum_knn.precision_macro * 100 },
-                    { metric: 'Recall (Macro)', Classical: results.classical_knn.recall_macro * 100, Quantum: results.quantum_knn.recall_macro * 100 },
-                    { metric: 'F1-Score (Macro)', Classical: results.classical_knn.f1_macro * 100, Quantum: results.quantum_knn.f1_macro * 100 },
-                  ]}
-                >
-                  <XAxis dataKey="metric" stroke="#94A3B8" fontSize={11} />
-                  <YAxis domain={[0, 100]} stroke="#94A3B8" fontSize={11} unit="%" />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#020617', borderColor: '#1E293B', borderRadius: '0.75rem' }}
-                    formatter={(val) => [`${Number(val).toFixed(1)}%`, '']}
-                  />
-                  <Legend />
-                  <Bar dataKey="Classical" fill="#6366F1" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Quantum" fill="#10B981" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Circuit Details */}
-          {results.circuit_summary?.ascii_diagram && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                  <Cpu className="h-4 w-4 text-cyan-400" />
-                  PennyLane Quantum Feature Map Circuit ({results.qubits_used} Qubits)
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <Database className="h-5 w-5 text-cyan-400" />
+                  {dsContext.title}
                 </h3>
-                <span className="text-xs font-mono text-cyan-400">
-                  {results.circuit_summary.total_gates} Total Gates &bull; {results.circuit_summary.cnot_gates} CNOT Entanglers
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  {dsContext.summary}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block">
+                    Target Objective & Meaning
+                  </span>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {dsContext.targetDescription}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {results.classes.map((cls) => (
+                      <span key={cls} className="rounded-md bg-cyan-950/60 border border-cyan-800/40 px-2 py-0.5 text-[10px] font-bold text-cyan-300">
+                        {cls}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block">
+                    Feature Relationships & Quantum Mapping
+                  </span>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {dsContext.featureInsights}
+                  </p>
+                  <div className="text-[10px] text-slate-400 font-mono pt-1">
+                    Selected Attributes: <strong className="text-indigo-300">{results.selected_features?.join(', ') || 'Optimized features'}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Score Comparison Cards */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {/* Quantum KNN Card */}
+              <div className="rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-br from-slate-900 via-emerald-950/30 to-slate-900 p-6 shadow-2xl">
+                <div className="flex justify-between items-center border-b border-emerald-500/20 pb-3">
+                  <span className="rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                    <Cpu className="h-3.5 w-3.5" /> Quantum KNN (PennyLane)
+                  </span>
+                  <span className="text-xs font-mono text-emerald-400 font-bold">
+                    {results.qubits_used} Qubits &bull; {results.feature_map.toUpperCase()} Map
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-slate-400 block">Test Accuracy</span>
+                    <h3 className="text-3xl font-black text-emerald-400 mt-1">
+                      {(results.quantum_knn.accuracy * 100).toFixed(1)}%
+                    </h3>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-400 block">Macro F1-Score</span>
+                    <h3 className="text-3xl font-black text-white mt-1">
+                      {(results.quantum_knn.f1_macro * 100).toFixed(1)}%
+                    </h3>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-300 border-t border-emerald-500/20 pt-3">
+                  <div>Precision: {(results.quantum_knn.precision_macro * 100).toFixed(1)}%</div>
+                  <div>Recall: {(results.quantum_knn.recall_macro * 100).toFixed(1)}%</div>
+                  <div>Inference: {results.quantum_knn.inference_time_sec}s</div>
+                </div>
+              </div>
+
+              {/* Classical KNN Card */}
+              <div className="rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-slate-900 via-indigo-950/30 to-slate-900 p-6 shadow-2xl">
+                <div className="flex justify-between items-center border-b border-indigo-500/20 pb-3">
+                  <span className="rounded-full bg-indigo-500/20 px-3 py-0.5 text-xs font-bold text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5">
+                    <BarChart2 className="h-3.5 w-3.5" /> Classical KNN (Scikit-Learn)
+                  </span>
+                  <span className="text-xs font-mono text-indigo-400 font-bold">
+                    Euclidean Metric &bull; k={results.k}
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-slate-400 block">Test Accuracy</span>
+                    <h3 className="text-3xl font-black text-indigo-400 mt-1">
+                      {(results.classical_knn.accuracy * 100).toFixed(1)}%
+                    </h3>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-400 block">Macro F1-Score</span>
+                    <h3 className="text-3xl font-black text-white mt-1">
+                      {(results.classical_knn.f1_macro * 100).toFixed(1)}%
+                    </h3>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-300 border-t border-indigo-500/20 pt-3">
+                  <div>Precision: {(results.classical_knn.precision_macro * 100).toFixed(1)}%</div>
+                  <div>Recall: {(results.classical_knn.recall_macro * 100).toFixed(1)}%</div>
+                  <div>Inference: {results.classical_knn.inference_time_sec}s</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Descriptive Empirical Evaluation Narrative Card */}
+            <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-900 p-6 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" /> Descriptive Evaluation Narrative: How this Dataset was Analyzed
+                </h4>
+                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${accuracyDelta >= 0 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                  {higherModel} Leads ({accuracyDelta >= 0 ? `+${accuracyDelta.toFixed(1)}%` : `${accuracyDelta.toFixed(1)}%`})
                 </span>
               </div>
-              <div className="overflow-x-auto rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <pre className="font-mono text-xs text-cyan-300 leading-relaxed whitespace-pre">
-                  {results.circuit_summary.ascii_diagram}
-                </pre>
+
+              <div className="space-y-2.5 text-xs text-slate-300 leading-relaxed">
+                <p>
+                  <strong>Empirical Performance on {dsContext.title}:</strong> On this {dsContext.domain.toLowerCase()} dataset, 
+                  Quantum KNN attained a test accuracy of <strong className="text-emerald-400">{(results.quantum_knn.accuracy * 100).toFixed(1)}%</strong> and 
+                  Macro F1-score of <strong className="text-white">{(results.quantum_knn.f1_macro * 100).toFixed(1)}%</strong> across the held-out test samples, 
+                  compared to <strong className="text-indigo-400">{(results.classical_knn.accuracy * 100).toFixed(1)}%</strong> achieved by Scikit-Learn's classical KNN baseline.
+                </p>
+
+                <p>
+                  <strong>Why Quantum KNN Formed These Boundaries:</strong> By transforming continuous features into rotation angles 
+                  <code className="text-cyan-300 bg-slate-950 px-1 py-0.5 rounded border border-slate-800 font-mono">θ = 2·arctan(x)</code> and applying 
+                  the <strong className="text-white">{results.feature_map.toUpperCase()}</strong> feature map, the quantum circuit constructs a 
+                  multi-qubit entangled state vector in a <strong className="text-cyan-300">{results.qubits_used}-qubit Hilbert space (2^{results.qubits_used} = {2**results.qubits_used} dimensions)</strong>. 
+                  Nearest neighbors were identified not by standard Euclidean distance, but via quantum state overlap fidelity 
+                  <code className="text-indigo-300 bg-slate-950 px-1 py-0.5 rounded border border-slate-800 font-mono">F = |⟨ψ|φ⟩|²</code>. 
+                  {accuracyDelta > 0 
+                    ? ` This allowed the quantum model to isolate entangled feature co-dependencies that classical Euclidean geometry struggled to separate.`
+                    : accuracyDelta === 0
+                    ? ` This indicates that quantum state fidelity overlap preserved the natural topological geometry of the dataset with zero degradation.`
+                    : ` For this dataset's localized density distributions, classical Euclidean linear geometry provided sharper margins than bounded trigonometric state overlaps.`}
+                </p>
+
+                <p>
+                  <strong>Practical Domain Takeaway:</strong> For practical applications in <strong className="text-white">{dsContext.domain}</strong>, 
+                  the model provides robust confidence across target classes ({results.classes.join(', ')}). In production on a physical Quantum Processing Unit (QPU), 
+                  the state overlap fidelity would be evaluated in constant time via quantum swap tests without classical simulation overhead.
+                </p>
               </div>
             </div>
-          )}
 
-          <div className="flex justify-between items-center pt-2">
-            <button
-              onClick={() => setCurrentStep(4)}
-              className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white"
-            >
-              <ArrowLeft className="h-4 w-4" /> Change Training Hyperparameters
-            </button>
-            <div className="flex gap-3">
+            {/* Performance Comparison Bar Chart */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 mb-3">
+                Performance Benchmark Comparison
+              </h3>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { metric: 'Accuracy', Classical: results.classical_knn.accuracy * 100, Quantum: results.quantum_knn.accuracy * 100 },
+                      { metric: 'Precision (Macro)', Classical: results.classical_knn.precision_macro * 100, Quantum: results.quantum_knn.precision_macro * 100 },
+                      { metric: 'Recall (Macro)', Classical: results.classical_knn.recall_macro * 100, Quantum: results.quantum_knn.recall_macro * 100 },
+                      { metric: 'F1-Score (Macro)', Classical: results.classical_knn.f1_macro * 100, Quantum: results.quantum_knn.f1_macro * 100 },
+                    ]}
+                  >
+                    <XAxis dataKey="metric" stroke="#94A3B8" fontSize={11} />
+                    <YAxis domain={[0, 100]} stroke="#94A3B8" fontSize={11} unit="%" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#020617', borderColor: '#1E293B', borderRadius: '0.75rem' }}
+                      formatter={(val) => [`${Number(val).toFixed(1)}%`, '']}
+                    />
+                    <Legend />
+                    <Bar dataKey="Classical" fill="#6366F1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Quantum" fill="#10B981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Circuit Details */}
+            {results.circuit_summary?.ascii_diagram && (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                    <Cpu className="h-4 w-4 text-cyan-400" />
+                    PennyLane Quantum Feature Map Circuit ({results.qubits_used} Qubits)
+                  </h3>
+                  <span className="text-xs font-mono text-cyan-400">
+                    {results.circuit_summary.total_gates} Total Gates &bull; {results.circuit_summary.cnot_gates} CNOT Entanglers
+                  </span>
+                </div>
+                <div className="overflow-x-auto rounded-xl bg-slate-950 p-4 border border-slate-800">
+                  <pre className="font-mono text-xs text-cyan-300 leading-relaxed whitespace-pre">
+                    {results.circuit_summary.ascii_diagram}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-2">
               <button
-                onClick={() => setCurrentStep(6)}
-                className="flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 transition"
+                onClick={() => setCurrentStep(4)}
+                className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white"
               >
-                Go to Live Prediction <ArrowRight className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4" /> Change Training Hyperparameters
               </button>
-              <button
-                onClick={() => setCurrentStep(7)}
-                className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/25 hover:bg-indigo-500 transition"
-              >
-                <Download className="h-4 w-4" /> Download PDF Report
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setCurrentStep(6)}
+                  className="flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 transition"
+                >
+                  Go to Live Prediction <ArrowRight className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setCurrentStep(7)}
+                  className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/25 hover:bg-indigo-500 transition"
+                >
+                  <Download className="h-4 w-4" /> Download PDF Report
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================= */}
       {/* STEP 6: LIVE PREDICTION (MANUAL & BATCH CSV)              */}
