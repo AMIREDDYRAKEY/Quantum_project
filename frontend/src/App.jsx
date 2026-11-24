@@ -14,10 +14,11 @@ import ExplainableAI from './pages/ExplainableAI';
 import ModelComparison from './pages/ModelComparison';
 import PredictionPlayground from './pages/PredictionPlayground';
 import ExperimentHistory from './pages/ExperimentHistory';
+import CustomDatasetStudio from './pages/CustomDatasetStudio';
 import { api } from './services/api';
 
 export default function App() {
-  const [activePage, setActivePage] = useState('prediction');
+  const [activePage, setActivePage] = useState('custom-studio');
   const [activeDataset, setActiveDataset] = useState('iris');
   const [datasets, setDatasets] = useState([
     { id: 'iris', name: 'Iris Dataset', expected_records: 150 },
@@ -43,6 +44,8 @@ export default function App() {
 
   const renderActivePage = () => {
     switch (activePage) {
+      case 'custom-studio':
+        return <CustomDatasetStudio />;
       case 'dashboard':
         return <Dashboard activeDataset={activeDataset} setActivePage={setActivePage} />;
       case 'overview':

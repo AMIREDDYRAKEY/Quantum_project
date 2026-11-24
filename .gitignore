@@ -25,3 +25,9 @@ htmlcov/
 Thumbs.db
 .vscode/
 .idea/
+
+# User Uploads & Generated PDF Reports
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+backend/data/reports/*.pdf
+!backend/data/reports/.gitkeep

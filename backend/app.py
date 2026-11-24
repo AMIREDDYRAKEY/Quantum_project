@@ -20,6 +20,7 @@ from backend.api.routes_adaptive import adaptive_bp
 from backend.api.routes_xai import xai_bp
 from backend.api.routes_benchmarks import benchmarks_bp
 from backend.api.routes_predict import predict_bp
+from backend.api.routes_custom_dataset import dataset_custom_bp
 
 
 def create_app() -> Flask:
@@ -35,6 +36,7 @@ def create_app() -> Flask:
     app.register_blueprint(xai_bp)
     app.register_blueprint(benchmarks_bp)
     app.register_blueprint(predict_bp)
+    app.register_blueprint(dataset_custom_bp)
 
     @app.route("/", methods=["GET"])
     def index():

@@ -50,6 +50,32 @@ export const api = {
 
   // Real-time Prediction
   predictSingle: (params) => apiClient.post('/predict/single', params),
+
+  // Real-World Custom Dataset Ingestion, Profiling, Training, & PDF Reporting
+  uploadDataset: (formData) =>
+    apiClient.post('/dataset/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  loadSampleDataset: (sampleName) =>
+    apiClient.post(`/dataset/load-sample/${sampleName}`),
+  getDatasetProfile: (datasetId) =>
+    apiClient.get(`/dataset/${datasetId}/profile`),
+  getDatasetStatistics: (datasetId) =>
+    apiClient.get(`/dataset/${datasetId}/statistics`),
+  configureDataset: (datasetId, params) =>
+    apiClient.post(`/dataset/${datasetId}/configure`, params),
+  trainCustomDataset: (datasetId, params) =>
+    apiClient.post(`/dataset/${datasetId}/train`, params),
+  getDatasetResults: (datasetId) =>
+    apiClient.get(`/dataset/${datasetId}/results`),
+  predictCustomDataset: (datasetId, features) =>
+    apiClient.post(`/dataset/${datasetId}/predict`, { features }),
+  batchPredictCustomDataset: (datasetId, records) =>
+    apiClient.post(`/dataset/${datasetId}/batch-predict`, { records }),
+  getDatasetCircuit: (datasetId) =>
+    apiClient.get(`/dataset/${datasetId}/quantum-circuit`),
+  getReportDownloadUrl: (datasetId) =>
+    `${API_BASE_URL}/dataset/${datasetId}/report`,
 };
 
 export default api;

@@ -13,9 +13,11 @@ import {
   GitCompare,
   PlayCircle,
   History,
+  UploadCloud,
 } from 'lucide-react';
 
 export const NAV_PAGES = [
+  { id: 'custom-studio', name: '📂 Custom Dataset Studio', icon: UploadCloud, section: 'Core', badge: 'Research' },
   { id: 'prediction', name: '⚡ Live Q-KNN Demo', icon: PlayCircle, section: 'Core', badge: 'Interactive' },
   { id: 'dashboard', name: 'Executive Dashboard', icon: LayoutDashboard, section: 'Core' },
   { id: 'overview', name: 'Project Overview', icon: BookOpen, section: 'Core' },
