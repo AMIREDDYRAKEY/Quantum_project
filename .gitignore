@@ -32,3 +32,5 @@ backend/data/uploads/*
 backend/data/reports/*.pdf
 !backend/data/reports/.gitkeep
 !backend/data/reports/sample_*.pdf
+!backend/data/reports/QUANTUM_KNN_STUDIO_MASTER_OVERVIEW.pdf
+!QUANTUM_KNN_STUDIO_MASTER_OVERVIEW.pdf
