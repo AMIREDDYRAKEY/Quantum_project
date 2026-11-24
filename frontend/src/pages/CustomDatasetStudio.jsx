@@ -2305,7 +2305,7 @@ export default function CustomDatasetStudio() {
                 <strong>Quantum Feature Encoding:</strong> Tabular features were successfully mapped into multi-qubit superposition and entangled states using parameterized Pauli rotations and CNOT ladder entanglement.
               </li>
               <li>
-                <strong>Fidelity-Based Distance Metric:</strong> Nearest neighbors were selected using genuine quantum state overlap fidelity $\mathcal{F} = |\langle\psi|\phi\rangle|^2$, replacing traditional Euclidean distance.
+                <strong>Fidelity-Based Distance Metric:</strong> Nearest neighbors were selected using genuine quantum state overlap fidelity <span className="font-mono text-cyan-300">F = |⟨ψ|ϕ⟩|²</span>, replacing traditional Euclidean distance.
               </li>
               <li>
                 <strong>Empirical Performance:</strong> Quantum KNN achieved <strong>{results ? (results.quantum_knn.accuracy * 100).toFixed(1) + '%' : '--'}</strong> accuracy compared to <strong>{results ? (results.classical_knn.accuracy * 100).toFixed(1) + '%' : '--'}</strong> by Classical KNN on an identical stratified test partition.
