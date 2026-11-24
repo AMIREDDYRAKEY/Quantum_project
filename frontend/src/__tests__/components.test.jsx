@@ -49,16 +49,16 @@ describe('ConfusionMatrix Component', () => {
 });
 
 describe('Navbar Component', () => {
-  it('renders header title and IEEE reference badge', () => {
+  it('renders header title and platform subtitle', () => {
     render(<Navbar activeDataset="iris" setActiveDataset={vi.fn()} datasets={[]} />);
     expect(screen.getByText(/Quantum k-NN Research Platform/i)).toBeDefined();
-    expect(screen.getByText(/IEEE ICOCT 2025/i)).toBeDefined();
+    expect(screen.getByText(/Hybrid Feature Map/i)).toBeDefined();
     expect(screen.getByText(/PennyLane QML/i)).toBeDefined();
   });
 });
 
 describe('Sidebar Component', () => {
-  it('renders all 13 navigation items and triggers page change', () => {
+  it('renders navigation items and triggers page change', () => {
     const setActivePage = vi.fn();
     render(<Sidebar activePage="dashboard" setActivePage={setActivePage} />);
 
@@ -68,9 +68,9 @@ describe('Sidebar Component', () => {
     expect(screen.getByText('Adaptive Hybrid QKNN')).toBeDefined();
     expect(screen.getByText('Explainable AI')).toBeDefined();
 
-    const playgroundButton = screen.getByText('⚡ Live Q-KNN Demo');
-    fireEvent.click(playgroundButton);
-    expect(setActivePage).toHaveBeenCalledWith('prediction');
+    const studioButton = screen.getByText('📂 Custom Dataset Studio');
+    fireEvent.click(studioButton);
+    expect(setActivePage).toHaveBeenCalledWith('custom-studio');
   });
 });
 

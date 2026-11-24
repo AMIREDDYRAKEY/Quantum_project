@@ -16,7 +16,7 @@ export default function Navbar({ activeDataset = 'iris', setActiveDataset, datas
             </span>
           </h1>
           <p className="text-[11px] text-slate-400">
-            IEEE ICOCT 2025 Implementation &bull; DOI: 10.1109/ICOCT64433.2025.11118830
+            Hybrid Feature Map Quantum Machine Learning Classifier
           </p>
         </div>
       </div>
