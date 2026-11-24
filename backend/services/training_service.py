@@ -177,62 +177,107 @@ class TrainingService:
             {
                 "model_key": "classical",
                 "model_name": "Classical KNN (Scikit-Learn)",
+                "display_name": "Classical KNN (Scikit-Learn)",
+                "feature_map": "classical",
+                "paradigm": "Classical",
                 "accuracy": c_metrics["accuracy"],
                 "precision": c_metrics["precision_macro"],
+                "precision_macro": c_metrics["precision_macro"],
                 "recall": c_metrics["recall_macro"],
+                "recall_macro": c_metrics["recall_macro"],
                 "f1_score": c_metrics["f1_macro"],
+                "f1_macro": c_metrics["f1_macro"],
                 "train_time_sec": c_metrics["train_time_sec"],
                 "inference_time_sec": c_metrics["inference_time_sec"],
+                "latency_sec": c_metrics["inference_time_sec"],
                 "total_time_sec": round(c_metrics["train_time_sec"] + c_metrics["inference_time_sec"], 4),
                 "is_quantum": False,
+                "is_best_model": False,
+                "is_best_quantum": False,
             },
             {
                 "model_key": "z",
                 "model_name": "Z Feature Map QKNN",
+                "display_name": "Z Feature Map QKNN",
+                "feature_map": "z",
+                "paradigm": "Quantum",
                 "accuracy": q_models["z"]["accuracy"],
                 "precision": q_models["z"]["precision_macro"],
+                "precision_macro": q_models["z"]["precision_macro"],
                 "recall": q_models["z"]["recall_macro"],
+                "recall_macro": q_models["z"]["recall_macro"],
                 "f1_score": q_models["z"]["f1_macro"],
+                "f1_macro": q_models["z"]["f1_macro"],
                 "train_time_sec": q_models["z"]["train_time_sec"],
                 "inference_time_sec": q_models["z"]["inference_time_sec"],
+                "latency_sec": q_models["z"]["inference_time_sec"],
                 "total_time_sec": q_models["z"]["total_time_sec"],
                 "is_quantum": True,
+                "is_best_model": False,
+                "is_best_quantum": False,
             },
             {
                 "model_key": "zz",
                 "model_name": "ZZ Feature Map QKNN",
+                "display_name": "ZZ Feature Map QKNN",
+                "feature_map": "zz",
+                "paradigm": "Quantum",
                 "accuracy": q_models["zz"]["accuracy"],
                 "precision": q_models["zz"]["precision_macro"],
+                "precision_macro": q_models["zz"]["precision_macro"],
                 "recall": q_models["zz"]["recall_macro"],
+                "recall_macro": q_models["zz"]["recall_macro"],
                 "f1_score": q_models["zz"]["f1_macro"],
+                "f1_macro": q_models["zz"]["f1_macro"],
                 "train_time_sec": q_models["zz"]["train_time_sec"],
                 "inference_time_sec": q_models["zz"]["inference_time_sec"],
+                "latency_sec": q_models["zz"]["inference_time_sec"],
                 "total_time_sec": q_models["zz"]["total_time_sec"],
                 "is_quantum": True,
+                "is_best_model": False,
+                "is_best_quantum": False,
             },
             {
                 "model_key": "pauli",
                 "model_name": "Pauli Feature Map QKNN",
+                "display_name": "Pauli Feature Map QKNN",
+                "feature_map": "pauli",
+                "paradigm": "Quantum",
                 "accuracy": q_models["pauli"]["accuracy"],
                 "precision": q_models["pauli"]["precision_macro"],
+                "precision_macro": q_models["pauli"]["precision_macro"],
                 "recall": q_models["pauli"]["recall_macro"],
+                "recall_macro": q_models["pauli"]["recall_macro"],
                 "f1_score": q_models["pauli"]["f1_macro"],
+                "f1_macro": q_models["pauli"]["f1_macro"],
                 "train_time_sec": q_models["pauli"]["train_time_sec"],
                 "inference_time_sec": q_models["pauli"]["inference_time_sec"],
+                "latency_sec": q_models["pauli"]["inference_time_sec"],
                 "total_time_sec": q_models["pauli"]["total_time_sec"],
                 "is_quantum": True,
+                "is_best_model": False,
+                "is_best_quantum": False,
             },
             {
                 "model_key": "hybrid",
                 "model_name": "Hybrid Feature Map QKNN",
+                "display_name": "Hybrid Feature Map QKNN",
+                "feature_map": "hybrid",
+                "paradigm": "Quantum",
                 "accuracy": q_models["hybrid"]["accuracy"],
                 "precision": q_models["hybrid"]["precision_macro"],
+                "precision_macro": q_models["hybrid"]["precision_macro"],
                 "recall": q_models["hybrid"]["recall_macro"],
+                "recall_macro": q_models["hybrid"]["recall_macro"],
                 "f1_score": q_models["hybrid"]["f1_macro"],
+                "f1_macro": q_models["hybrid"]["f1_macro"],
                 "train_time_sec": q_models["hybrid"]["train_time_sec"],
                 "inference_time_sec": q_models["hybrid"]["inference_time_sec"],
+                "latency_sec": q_models["hybrid"]["inference_time_sec"],
                 "total_time_sec": q_models["hybrid"]["total_time_sec"],
                 "is_quantum": True,
+                "is_best_model": False,
+                "is_best_quantum": False,
             },
         ]
 
@@ -244,12 +289,26 @@ class TrainingService:
         best_quantum_entry = max(quantum_entries, key=lambda m: (m["accuracy"], m["f1_score"]))
         best_quantum_map = best_quantum_entry["model_name"]
 
+        # Tag leading flags
+        for m in comparison_table:
+            if m["model_name"] == best_overall_model or m["model_key"] == best_overall_model:
+                m["is_best_model"] = True
+            if m["model_name"] == best_quantum_map or m["model_key"] == best_quantum_map:
+                m["is_best_quantum"] = True
+
         # Empirical Hybrid vs Individual Feature Map Analysis
         hybrid_m = q_models["hybrid"]
         delta_vs_z = round(hybrid_m["accuracy"] - q_models["z"]["accuracy"], 4)
+        delta_f1_vs_z = round(hybrid_m["f1_macro"] - q_models["z"]["f1_macro"], 4)
+
         delta_vs_zz = round(hybrid_m["accuracy"] - q_models["zz"]["accuracy"], 4)
+        delta_f1_vs_zz = round(hybrid_m["f1_macro"] - q_models["zz"]["f1_macro"], 4)
+
         delta_vs_pauli = round(hybrid_m["accuracy"] - q_models["pauli"]["accuracy"], 4)
+        delta_f1_vs_pauli = round(hybrid_m["f1_macro"] - q_models["pauli"]["f1_macro"], 4)
+
         delta_vs_classical = round(hybrid_m["accuracy"] - c_metrics["accuracy"], 4)
+        delta_f1_vs_classical = round(hybrid_m["f1_macro"] - c_metrics["f1_macro"], 4)
 
         if delta_vs_z >= 0 and delta_vs_zz >= 0 and delta_vs_pauli >= 0:
             hybrid_insight = (
@@ -276,11 +335,20 @@ class TrainingService:
             "hybrid_accuracy": hybrid_m["accuracy"],
             "hybrid_f1": hybrid_m["f1_macro"],
             "delta_vs_z_accuracy": delta_vs_z,
+            "delta_accuracy_vs_z": delta_vs_z,
+            "delta_f1_vs_z": delta_f1_vs_z,
             "delta_vs_zz_accuracy": delta_vs_zz,
+            "delta_accuracy_vs_zz": delta_vs_zz,
+            "delta_f1_vs_zz": delta_f1_vs_zz,
             "delta_vs_pauli_accuracy": delta_vs_pauli,
+            "delta_accuracy_vs_pauli": delta_vs_pauli,
+            "delta_f1_vs_pauli": delta_f1_vs_pauli,
             "delta_vs_classical_accuracy": delta_vs_classical,
+            "delta_accuracy_vs_classical": delta_vs_classical,
+            "delta_f1_vs_classical": delta_f1_vs_classical,
             "best_feature_map": best_quantum_map,
             "insight": hybrid_insight,
+            "recommendation": hybrid_insight,
         }
 
         hardware_disclosure = (
@@ -350,10 +418,17 @@ class TrainingService:
 
         # Parse and order features according to original feature schema
         orig_cols = data["original_features"]
+        feature_medians = data.get("feature_medians", {})
         raw_row = []
         for col in orig_cols:
-            val = input_features.get(col, 0.0)
-            raw_row.append(float(val))
+            val = input_features.get(col)
+            if val is not None:
+                try:
+                    raw_row.append(float(val))
+                except (ValueError, TypeError):
+                    raw_row.append(feature_medians.get(col, 0.0))
+            else:
+                raw_row.append(feature_medians.get(col, 0.0))
 
         input_arr = np.array(raw_row, dtype=np.float64).reshape(1, -1)
 

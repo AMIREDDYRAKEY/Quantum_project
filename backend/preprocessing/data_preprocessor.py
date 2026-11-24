@@ -175,6 +175,8 @@ class DataPreprocessor:
         else:
             explanation += f"Directly mapped {target_features} features to {target_features} qubits."
 
+        feature_medians = {col: float(X_clean[col].median()) for col in original_feature_names}
+
         processed_state = {
             "dataset_id": dataset_id,
             "target_column": target_column,
@@ -187,6 +189,7 @@ class DataPreprocessor:
             "feature_selection_method": feature_selection_method,
             "original_features": original_feature_names,
             "selected_features": selected_feature_names,
+            "feature_medians": feature_medians,
             "n_qubits": target_features,
             "total_samples": total_samples,
             "train_samples": len(y_train),

@@ -120,7 +120,8 @@ export default function CustomDatasetStudio() {
       const res = await api.getDatasetProfile(id);
       if (res.data?.data) {
         setProfile(res.data.data);
-        const recTarget = res.data.data.recommended_target || res.data.data.candidate_target_columns?.[0] || '';
+        const cols = res.data.data.column_names || overview?.column_names || [];
+        const recTarget = res.data.data.recommended_target || res.data.data.candidate_target_columns?.[0] || (cols.length > 0 ? cols[cols.length - 1] : '');
         setTargetColumn(recTarget);
       }
     } catch (err) {
@@ -132,7 +133,8 @@ export default function CustomDatasetStudio() {
   // STEP 3: CONFIGURE & PREPROCESS
   // ==========================================
   const handleConfigure = async () => {
-    if (!targetColumn) {
+    const targetToUse = targetColumn || profile?.recommended_target || profile?.candidate_target_columns?.[0] || (overview?.column_names?.length > 0 ? overview.column_names[overview.column_names.length - 1] : '');
+    if (!targetToUse) {
       setErrorMsg('Please select a target classification column.');
       return;
     }
@@ -140,7 +142,7 @@ export default function CustomDatasetStudio() {
     setErrorMsg('');
     try {
       const res = await api.configureDataset(datasetId, {
-        target_column: targetColumn,
+        target_column: targetToUse,
         test_size: parseFloat(testSize),
         max_features: parseInt(maxFeatures),
         feature_selection_method: featureSelectionMethod,
@@ -151,11 +153,11 @@ export default function CustomDatasetStudio() {
       });
       if (res.data?.data) {
         setConfigInfo(res.data.data);
-        // Initialize prediction form with medians
+        // Initialize prediction form with medians or means
         const initFeats = {};
         res.data.data.selected_feature_names.forEach((f) => {
           const stats = profile?.descriptive_statistics?.[f];
-          initFeats[f] = stats ? stats.median : 0.0;
+          initFeats[f] = stats && typeof stats.median === 'number' ? stats.median : (stats && typeof stats.mean === 'number' ? stats.mean : 0.0);
         });
         setManualFeatures(initFeats);
         setCurrentStep(4);
@@ -1529,112 +1531,135 @@ export default function CustomDatasetStudio() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-mono">
-                    {(results.comparison_table || []).map((m, idx) => (
-                      <tr
-                        key={idx}
-                        onClick={() => setSelectedDetailModel(m.model_name)}
-                        className={`transition cursor-pointer ${
-                          selectedDetailModel === m.model_name
-                            ? 'bg-cyan-950/40 border-l-2 border-cyan-400'
-                            : 'hover:bg-slate-850/50'
-                        }`}
-                      >
-                        <td className="py-2.5 px-3 font-sans font-bold text-white flex items-center gap-1.5">
-                          {m.paradigm === 'Quantum' ? <Cpu className="h-3.5 w-3.5 text-cyan-400" /> : <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />}
-                          <span>{m.display_name}</span>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.paradigm === 'Quantum' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/40' : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'}`}>
-                            {m.paradigm}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-emerald-400">{(m.accuracy * 100).toFixed(2)}%</td>
-                        <td className="py-2.5 px-3 text-slate-300">{(m.precision_macro * 100).toFixed(2)}%</td>
-                        <td className="py-2.5 px-3 text-slate-300">{(m.recall_macro * 100).toFixed(2)}%</td>
-                        <td className="py-2.5 px-3 font-bold text-white">{(m.f1_macro * 100).toFixed(2)}%</td>
-                        <td className="py-2.5 px-3 text-slate-400">{m.latency_sec}s</td>
-                        <td className="py-2.5 px-3 font-sans">
-                          {m.is_best_model ? (
-                            <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
-                              <Trophy className="h-3 w-3" /> Leading Model
+                    {(results.comparison_table || []).map((m, idx) => {
+                      const modelKey = m.model_key || (m.paradigm === 'Classical' || !m.is_quantum ? 'classical' : (m.model_name || m.display_name || '').toLowerCase().split(' ')[0]);
+                      const isSelected = selectedDetailModel === modelKey;
+                      const accuracyVal = Number(m.accuracy) || 0;
+                      const precisionVal = Number(m.precision_macro ?? m.precision) || 0;
+                      const recallVal = Number(m.recall_macro ?? m.recall) || 0;
+                      const f1Val = Number(m.f1_macro ?? m.f1_score) || 0;
+                      const latencyVal = m.latency_sec ?? m.inference_time_sec ?? m.total_time_sec ?? '--';
+                      const isQuantum = m.paradigm === 'Quantum' || m.is_quantum;
+
+                      return (
+                        <tr
+                          key={idx}
+                          onClick={() => setSelectedDetailModel(modelKey)}
+                          className={`transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-cyan-950/40 border-l-2 border-cyan-400'
+                              : 'hover:bg-slate-850/50'
+                          }`}
+                        >
+                          <td className="py-2.5 px-3 font-sans font-bold text-white flex items-center gap-1.5">
+                            {isQuantum ? <Cpu className="h-3.5 w-3.5 text-cyan-400" /> : <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />}
+                            <span>{m.display_name || m.model_name}</span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isQuantum ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/40' : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'}`}>
+                              {m.paradigm || (isQuantum ? 'Quantum' : 'Classical')}
                             </span>
-                          ) : m.is_best_quantum ? (
-                            <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300 border border-cyan-500/40 inline-flex items-center gap-1">
-                              <Sparkles className="h-3 w-3" /> Optimal Feature Map
-                            </span>
-                          ) : (
-                            <span className="text-slate-500 text-[10px]">Evaluated</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-emerald-400">{(accuracyVal * 100).toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 text-slate-300">{(precisionVal * 100).toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 text-slate-300">{(recallVal * 100).toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 font-bold text-white">{(f1Val * 100).toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 text-slate-400">{latencyVal}s</td>
+                          <td className="py-2.5 px-3 font-sans">
+                            {m.is_best_model ? (
+                              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
+                                <Trophy className="h-3 w-3" /> Leading Model
+                              </span>
+                            ) : m.is_best_quantum ? (
+                              <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300 border border-cyan-500/40 inline-flex items-center gap-1">
+                                <Sparkles className="h-3 w-3" /> Optimal Feature Map
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 text-[10px]">Evaluated</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
 
             {/* Hybrid Feature Map Research Investigation Card */}
-            {results.hybrid_analysis && (
-              <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-slate-900 via-indigo-950/20 to-slate-900 p-6 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono">
-                      Research Investigation Focus
+            {results.hybrid_analysis && (() => {
+              const deltaZ = Number(results.hybrid_analysis?.delta_accuracy_vs_z ?? results.hybrid_analysis?.delta_vs_z_accuracy ?? 0);
+              const deltaF1Z = Number(results.hybrid_analysis?.delta_f1_vs_z ?? 0);
+              const deltaZZ = Number(results.hybrid_analysis?.delta_accuracy_vs_zz ?? results.hybrid_analysis?.delta_vs_zz_accuracy ?? 0);
+              const deltaF1ZZ = Number(results.hybrid_analysis?.delta_f1_vs_zz ?? 0);
+              const deltaPauli = Number(results.hybrid_analysis?.delta_accuracy_vs_pauli ?? results.hybrid_analysis?.delta_vs_pauli_accuracy ?? 0);
+              const deltaF1Pauli = Number(results.hybrid_analysis?.delta_f1_vs_pauli ?? 0);
+              const deltaClassical = Number(results.hybrid_analysis?.delta_accuracy_vs_classical ?? results.hybrid_analysis?.delta_vs_classical_accuracy ?? 0);
+              const deltaF1Classical = Number(results.hybrid_analysis?.delta_f1_vs_classical ?? 0);
+              const insightText = results.hybrid_analysis?.recommendation || results.hybrid_analysis?.insight || 'Hybrid feature map synthesized product rotations and entanglers.';
+
+              return (
+                <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-slate-900 via-indigo-950/20 to-slate-900 p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono">
+                        Research Investigation Focus
+                      </span>
+                      <h3 className="text-sm font-bold text-white mt-0.5 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-cyan-400" />
+                        Hybrid Feature Map vs. Individual Quantum Feature Maps
+                      </h3>
+                    </div>
+                    <span className="text-xs text-indigo-300 font-mono">
+                      Synthesizes Z (Product), ZZ (CNOT Entanglement) &amp; Pauli (3-Axis)
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-0.5 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-cyan-400" />
-                      Hybrid Feature Map vs. Individual Quantum Feature Maps
-                    </h3>
-                  </div>
-                  <span className="text-xs text-indigo-300 font-mono">
-                    Synthesizes Z (Product), ZZ (CNOT Entanglement) &amp; Pauli (3-Axis)
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
-                    <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Z Feature Map</span>
-                    <strong className={`text-sm font-bold ${results.hybrid_analysis.delta_accuracy_vs_z >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {results.hybrid_analysis.delta_accuracy_vs_z >= 0 ? '+' : ''}
-                      {(results.hybrid_analysis.delta_accuracy_vs_z * 100).toFixed(2)}%
-                    </strong>
-                    <div className="text-[10px] text-slate-500 font-mono">F1: {(results.hybrid_analysis.delta_f1_vs_z * 100).toFixed(1)}%</div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
-                    <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. ZZ Feature Map</span>
-                    <strong className={`text-sm font-bold ${results.hybrid_analysis.delta_accuracy_vs_zz >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {results.hybrid_analysis.delta_accuracy_vs_zz >= 0 ? '+' : ''}
-                      {(results.hybrid_analysis.delta_accuracy_vs_zz * 100).toFixed(2)}%
-                    </strong>
-                    <div className="text-[10px] text-slate-500 font-mono">F1: {(results.hybrid_analysis.delta_f1_vs_zz * 100).toFixed(1)}%</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
+                      <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Z Feature Map</span>
+                      <strong className={`text-sm font-bold ${deltaZ >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {deltaZ >= 0 ? '+' : ''}
+                        {(deltaZ * 100).toFixed(2)}%
+                      </strong>
+                      <div className="text-[10px] text-slate-500 font-mono">F1: {(deltaF1Z * 100).toFixed(1)}%</div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
+                      <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. ZZ Feature Map</span>
+                      <strong className={`text-sm font-bold ${deltaZZ >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {deltaZZ >= 0 ? '+' : ''}
+                        {(deltaZZ * 100).toFixed(2)}%
+                      </strong>
+                      <div className="text-[10px] text-slate-500 font-mono">F1: {(deltaF1ZZ * 100).toFixed(1)}%</div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
+                      <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Pauli Feature Map</span>
+                      <strong className={`text-sm font-bold ${deltaPauli >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {deltaPauli >= 0 ? '+' : ''}
+                        {(deltaPauli * 100).toFixed(2)}%
+                      </strong>
+                      <div className="text-[10px] text-slate-500 font-mono">F1: {(deltaF1Pauli * 100).toFixed(1)}%</div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
+                      <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Classical KNN</span>
+                      <strong className={`text-sm font-bold ${deltaClassical >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {deltaClassical >= 0 ? '+' : ''}
+                        {(deltaClassical * 100).toFixed(2)}%
+                      </strong>
+                      <div className="text-[10px] text-slate-500 font-mono">F1: {(deltaF1Classical * 100).toFixed(1)}%</div>
+                    </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
-                    <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Pauli Feature Map</span>
-                    <strong className={`text-sm font-bold ${results.hybrid_analysis.delta_accuracy_vs_pauli >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {results.hybrid_analysis.delta_accuracy_vs_pauli >= 0 ? '+' : ''}
-                      {(results.hybrid_analysis.delta_accuracy_vs_pauli * 100).toFixed(2)}%
-                    </strong>
-                    <div className="text-[10px] text-slate-500 font-mono">F1: {(results.hybrid_analysis.delta_f1_vs_pauli * 100).toFixed(1)}%</div>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
-                    <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Classical KNN</span>
-                    <strong className={`text-sm font-bold ${results.hybrid_analysis.delta_accuracy_vs_classical >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {results.hybrid_analysis.delta_accuracy_vs_classical >= 0 ? '+' : ''}
-                      {(results.hybrid_analysis.delta_accuracy_vs_classical * 100).toFixed(2)}%
-                    </strong>
-                    <div className="text-[10px] text-slate-500 font-mono">F1: {(results.hybrid_analysis.delta_f1_vs_classical * 100).toFixed(1)}%</div>
+                  <div className="rounded-xl bg-slate-950/80 p-3.5 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+                    <strong className="text-cyan-300">Empirical Research Insight: </strong>
+                    {insightText}
                   </div>
                 </div>
-
-                <div className="rounded-xl bg-slate-950/80 p-3.5 border border-slate-800 text-xs text-slate-300 leading-relaxed">
-                  <strong className="text-cyan-300">Empirical Research Insight: </strong>
-                  {results.hybrid_analysis.recommendation}
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Performance Comparison Bar Chart */}
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
@@ -1648,9 +1673,9 @@ export default function CustomDatasetStudio() {
                       { display_name: 'Classical KNN', accuracy: results.classical_knn.accuracy, f1_macro: results.classical_knn.f1_macro },
                       { display_name: 'Quantum KNN', accuracy: results.quantum_knn.accuracy, f1_macro: results.quantum_knn.f1_macro },
                     ]).map((m) => ({
-                      name: m.display_name.replace(' Feature Map', '').replace(' QKNN', ''),
-                      Accuracy: +(m.accuracy * 100).toFixed(1),
-                      'Macro F1': +(m.f1_macro * 100).toFixed(1),
+                      name: (m.display_name || m.model_name || 'Model').replace(' Feature Map', '').replace(' QKNN', '').replace(' (Scikit-Learn)', ''),
+                      Accuracy: +((Number(m.accuracy) || 0) * 100).toFixed(1),
+                      'Macro F1': +((Number(m.f1_macro ?? m.f1_score) || 0) * 100).toFixed(1),
                     }))}
                   >
                     <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} />
@@ -1669,9 +1694,17 @@ export default function CustomDatasetStudio() {
 
             {/* Interactive Model Deep-Dive & Circuit Inspection Tabs */}
             {(() => {
-              const activeModelData = selectedDetailModel === 'classical'
-                ? results.classical_knn
-                : (results.all_quantum_models?.[selectedDetailModel] || results.quantum_knn);
+              const activeModelKey = (selectedDetailModel || 'hybrid').toLowerCase();
+              let activeModelData = null;
+              if (activeModelKey === 'classical' || activeModelKey.includes('classical')) {
+                activeModelData = results.classical_knn;
+              } else if (results.all_quantum_models?.[activeModelKey]) {
+                activeModelData = results.all_quantum_models[activeModelKey];
+              } else if (results.all_quantum_models?.['hybrid']) {
+                activeModelData = results.all_quantum_models['hybrid'];
+              } else {
+                activeModelData = results.quantum_knn;
+              }
 
               return (
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
@@ -1716,19 +1749,19 @@ export default function CustomDatasetStudio() {
                         <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
                           <span className="text-[10px] text-slate-400 block font-mono">Test Accuracy</span>
                           <strong className="text-base font-bold text-emerald-400">
-                            {(activeModelData.accuracy * 100).toFixed(1)}%
+                            {((Number(activeModelData.accuracy) || 0) * 100).toFixed(1)}%
                           </strong>
                         </div>
                         <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
                           <span className="text-[10px] text-slate-400 block font-mono">Macro F1-Score</span>
                           <strong className="text-base font-bold text-white">
-                            {(activeModelData.f1_macro * 100).toFixed(1)}%
+                            {((Number(activeModelData.f1_macro ?? activeModelData.f1_score) || 0) * 100).toFixed(1)}%
                           </strong>
                         </div>
                         <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
                           <span className="text-[10px] text-slate-400 block font-mono">Precision / Recall</span>
                           <strong className="text-xs font-bold text-indigo-300 font-mono">
-                            {(activeModelData.precision_macro * 100).toFixed(1)}% / {(activeModelData.recall_macro * 100).toFixed(1)}%
+                            {((Number(activeModelData.precision_macro ?? activeModelData.precision) || 0) * 100).toFixed(1)}% / {((Number(activeModelData.recall_macro ?? activeModelData.recall) || 0) * 100).toFixed(1)}%
                           </strong>
                         </div>
                         <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
@@ -1747,11 +1780,11 @@ export default function CustomDatasetStudio() {
                       )}
 
                       {/* Quantum Circuit Architecture Telemetry */}
-                      {selectedDetailModel !== 'classical' && (activeModelData.circuit_summary?.ascii_diagram || results.circuit_summary?.ascii_diagram) && (
+                      {activeModelKey !== 'classical' && (activeModelData.circuit_summary?.ascii_diagram || results.circuit_summary?.ascii_diagram) && (
                         <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
                           <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
                             <span className="text-[11px] font-bold text-cyan-400 font-mono flex items-center gap-1.5">
-                              <Cpu className="h-3.5 w-3.5" /> PennyLane Circuit Schematic ({activeModelData.circuit_summary?.n_wires || results.qubits_used} Qubits &bull; {selectedDetailModel.toUpperCase()} Feature Map)
+                              <Cpu className="h-3.5 w-3.5" /> PennyLane Circuit Schematic ({activeModelData.circuit_summary?.n_wires || results.qubits_used} Qubits &bull; {activeModelKey.toUpperCase()} Feature Map)
                             </span>
                             <span className="text-[10px] text-slate-400 font-mono">
                               {activeModelData.circuit_summary?.total_gates || results.circuit_summary?.total_gates} Total Gates &bull; {activeModelData.circuit_summary?.cnot_gates ?? results.circuit_summary?.cnot_gates ?? 0} CNOT Entanglers
@@ -1897,7 +1930,12 @@ export default function CustomDatasetStudio() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {configInfo.selected_feature_names.map((feat) => {
                 const stats = profile?.descriptive_statistics?.[feat] || { min: 0, max: 10, median: 5 };
-                const currentVal = manualFeatures[feat] ?? stats.median;
+                const defaultVal = typeof stats.median === 'number' ? stats.median : (typeof stats.mean === 'number' ? stats.mean : 0);
+                const currentVal = manualFeatures[feat] !== undefined && manualFeatures[feat] !== null ? manualFeatures[feat] : defaultVal;
+                const minVal = typeof stats.min === 'number' ? stats.min : 0;
+                const maxVal = typeof stats.max === 'number' ? stats.max : (minVal + 10);
+                const stepVal = (maxVal - minVal) / 100 || 0.1;
+
                 return (
                   <div key={feat} className="rounded-xl bg-slate-950 p-3.5 border border-slate-800">
                     <div className="flex justify-between items-center text-xs mb-2">
@@ -1914,12 +1952,12 @@ export default function CustomDatasetStudio() {
                     </div>
                     <input
                       type="range"
-                      min={stats.min ?? 0}
-                      max={stats.max ?? 10}
-                      step={((stats.max ?? 10) - (stats.min ?? 0)) / 100 || 0.1}
+                      min={minVal}
+                      max={maxVal}
+                      step={stepVal}
                       value={currentVal}
                       onChange={(e) =>
-                        setManualFeatures({ ...manualFeatures, [feat]: parseFloat(e.target.value) })
+                        setManualFeatures({ ...manualFeatures, [feat]: parseFloat(e.target.value) || 0 })
                       }
                       className="w-full accent-cyan-400 cursor-pointer"
                     />
@@ -2167,24 +2205,33 @@ export default function CustomDatasetStudio() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-mono">
-                    {(results.comparison_table || []).map((m, idx) => (
-                      <tr key={idx} className="hover:bg-slate-850/50">
-                        <td className="py-2.5 px-3 font-sans font-bold text-white flex items-center gap-1.5">
-                          {m.paradigm === 'Quantum' ? <Cpu className="h-3.5 w-3.5 text-cyan-400" /> : <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />}
-                          <span>{m.display_name}</span>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.paradigm === 'Quantum' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/40' : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'}`}>
-                            {m.paradigm}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-emerald-400">{(m.accuracy * 100).toFixed(2)}%</td>
-                        <td className="py-2.5 px-3 text-slate-300">{(m.precision_macro * 100).toFixed(2)}%</td>
-                        <td className="py-2.5 px-3 text-slate-300">{(m.recall_macro * 100).toFixed(2)}%</td>
-                        <td className="py-2.5 px-3 font-bold text-white">{(m.f1_macro * 100).toFixed(2)}%</td>
-                        <td className="py-2.5 px-3 text-slate-400 font-mono">{m.latency_sec}s</td>
-                      </tr>
-                    ))}
+                    {(results.comparison_table || []).map((m, idx) => {
+                      const isQuantum = m.paradigm === 'Quantum' || m.is_quantum;
+                      const accuracyVal = Number(m.accuracy) || 0;
+                      const precisionVal = Number(m.precision_macro ?? m.precision) || 0;
+                      const recallVal = Number(m.recall_macro ?? m.recall) || 0;
+                      const f1Val = Number(m.f1_macro ?? m.f1_score) || 0;
+                      const latencyVal = m.latency_sec ?? m.inference_time_sec ?? m.total_time_sec ?? '--';
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-850/50">
+                          <td className="py-2.5 px-3 font-sans font-bold text-white flex items-center gap-1.5">
+                            {isQuantum ? <Cpu className="h-3.5 w-3.5 text-cyan-400" /> : <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />}
+                            <span>{m.display_name || m.model_name}</span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isQuantum ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/40' : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'}`}>
+                              {m.paradigm || (isQuantum ? 'Quantum' : 'Classical')}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-emerald-400">{(accuracyVal * 100).toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 text-slate-300">{(precisionVal * 100).toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 text-slate-300">{(recallVal * 100).toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 font-bold text-white">{(f1Val * 100).toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 text-slate-400 font-mono">{latencyVal}s</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
