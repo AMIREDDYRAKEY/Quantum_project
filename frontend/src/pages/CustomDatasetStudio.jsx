@@ -220,22 +220,44 @@ export default function CustomDatasetStudio() {
     setErrorMsg('');
     try {
       const res = await api.downloadReportBlob(datasetId);
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `quantum_knn_research_report_${datasetId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 5000);
+      if (res.data && res.data.size > 500) {
+        const blob = new Blob([res.data], { type: 'application/pdf' });
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `quantum_knn_research_report_${datasetId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 10000);
+      } else {
+        throw new Error('Received incomplete PDF response from server.');
+      }
     } catch (err) {
-      console.warn('Blob download failed, falling back to direct URL:', err);
+      console.warn('Blob download encountered error, attempting direct stream fallback:', err);
+      let errMsg = 'Failed to download PDF report. Ensure model is trained first.';
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const json = JSON.parse(text);
+          if (json.message) errMsg = json.message;
+        } catch (_) {}
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+
+      // Safe direct link fallback without popup blocker intervention
       try {
         const directUrl = api.getReportDownloadUrl(datasetId);
-        window.open(directUrl, '_blank');
-      } catch (e) {
-        setErrorMsg('Failed to download PDF report. Ensure model is trained first.');
+        const fallbackLink = document.createElement('a');
+        fallbackLink.href = directUrl;
+        fallbackLink.setAttribute('download', `quantum_knn_research_report_${datasetId}.pdf`);
+        fallbackLink.setAttribute('target', '_self');
+        document.body.appendChild(fallbackLink);
+        fallbackLink.click();
+        fallbackLink.remove();
+      } catch (fallbackErr) {
+        setErrorMsg(errMsg);
       }
     } finally {
       setDownloadingReport(false);
@@ -2066,23 +2088,32 @@ export default function CustomDatasetStudio() {
               </div>
 
               {/* Direct Download Action Button */}
-              <button
-                onClick={handleDownloadReport}
-                disabled={downloadingReport}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer flex-shrink-0 disabled:opacity-60"
-              >
-                {downloadingReport ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Generating PDF...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    <span>Download Official PDF Report</span>
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                <button
+                  onClick={handleDownloadReport}
+                  disabled={downloadingReport}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer disabled:opacity-60"
+                >
+                  {downloadingReport ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span>Generating PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      <span>Download Official PDF Report</span>
+                    </>
+                  )}
+                </button>
+                <a
+                  href={api.getReportDownloadUrl(datasetId)}
+                  download={`quantum_knn_research_report_${datasetId}.pdf`}
+                  className="text-[11px] text-cyan-400/90 hover:text-cyan-300 underline font-mono inline-flex items-center gap-1 transition"
+                >
+                  <Download className="h-3 w-3" /> Direct Mirror Link
+                </a>
+              </div>
             </div>
           </div>
 
@@ -2293,7 +2324,7 @@ export default function CustomDatasetStudio() {
               Click below to download the complete PDF report generated by ReportLab, incorporating all of the above tables, descriptive distributions, and quantum circuit diagrams for your viva documentation.
             </p>
 
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col items-center gap-2">
               <button
                 onClick={handleDownloadReport}
                 disabled={downloadingReport}
@@ -2311,6 +2342,13 @@ export default function CustomDatasetStudio() {
                   </>
                 )}
               </button>
+              <a
+                href={api.getReportDownloadUrl(datasetId)}
+                download={`quantum_knn_research_report_${datasetId}.pdf`}
+                className="text-[11px] text-cyan-400/90 hover:text-cyan-300 underline font-mono inline-flex items-center gap-1 transition"
+              >
+                <Download className="h-3 w-3" /> Direct Mirror Download Link
+              </a>
             </div>
           </div>
         </div>

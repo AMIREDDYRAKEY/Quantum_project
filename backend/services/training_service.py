@@ -393,6 +393,18 @@ class TrainingService:
             "results": results_payload,
         }
 
+        # Automatically generate and persist official PDF research report immediately
+        try:
+            from backend.reports.pdf_generator import ReportGenerator
+            pdf_path = ReportGenerator.generate_pdf_report(dataset_id)
+            session["report_path"] = str(pdf_path)
+            results_payload["report_path"] = str(pdf_path)
+            results_payload["report_ready"] = True
+        except Exception as report_err:
+            session["report_path"] = None
+            results_payload["report_ready"] = False
+            results_payload["report_generation_warning"] = str(report_err)
+
         return results_payload
 
     @staticmethod

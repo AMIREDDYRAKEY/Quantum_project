@@ -258,7 +258,19 @@ def download_report(dataset_id):
     try:
         existing_pdf = REPORTS_DIR / f"{dataset_id}_quantum_knn_report.pdf"
 
-        # Check if in-memory session is active & trained
+        # 1. Instant serve if pre-compiled PDF already exists
+        if existing_pdf.exists() and existing_pdf.stat().st_size > 1000:
+            resp = send_file(
+                str(existing_pdf),
+                as_attachment=True,
+                download_name=f"quantum_knn_report_{dataset_id}.pdf",
+                mimetype="application/pdf",
+            )
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Length"
+            return resp
+
+        # 2. Check if in-memory session is active & trained
         try:
             session = DatasetService.get_session(dataset_id)
         except KeyError:
@@ -278,7 +290,8 @@ def download_report(dataset_id):
                     "social_consumer": ("social_consumer_engagement.csv", "ad_purchase_decision"),
                     "wine": ("wine.csv", "target"),
                     "rain": ("rain.csv", "RainTomorrow"),
-                    "indian_liver": ("indian_liver.csv", "is_patient"),
+                    "indian_liver": ("indian_liver.csv", "Dataset"),
+                    "liver": ("indian_liver.csv", "Dataset"),
                 }
                 if sample_name in sample_map:
                     fname, target = sample_map[sample_name]
@@ -286,30 +299,51 @@ def download_report(dataset_id):
                     if sample_file.exists():
                         df = pd.read_csv(sample_file)
                         DatasetService.store_dataset(dataset_id, df, fname)
-                        DataPreprocessor.configure_and_preprocess(dataset_id, target_column=target, max_features=4)
+                        DataPreprocessor.configure_and_preprocess(dataset_id, target_column=target, max_features=4, sample_size=60)
                         TrainingService.train_and_evaluate(dataset_id, k=3, feature_map="hybrid")
-            elif existing_pdf.exists():
-                return send_file(
-                    str(existing_pdf),
-                    as_attachment=True,
-                    download_name=f"quantum_knn_report_{dataset_id}.pdf",
-                    mimetype="application/pdf",
-                )
+            else:
+                # Auto-recovery for user-uploaded custom datasets if memory was reset
+                from backend.utils.file_parser import UPLOAD_DIR
+                matched_uploads = list(UPLOAD_DIR.glob(f"{dataset_id}_*"))
+                if matched_uploads:
+                    up_file = matched_uploads[0]
+                    if up_file.suffix.lower() == ".csv":
+                        try:
+                            df = pd.read_csv(up_file)
+                        except Exception:
+                            df = pd.read_csv(up_file, encoding="latin-1")
+                    else:
+                        df = pd.read_excel(up_file)
+                    
+                    DatasetService.store_dataset(dataset_id, df, up_file.name)
+                    # Automatically select last column as target for auto-recovery
+                    target_candidate = list(df.columns)[-1]
+                    DataPreprocessor.configure_and_preprocess(dataset_id, target_column=target_candidate, max_features=4, sample_size=60)
+                    TrainingService.train_and_evaluate(dataset_id, k=3, feature_map="hybrid")
 
+        # 3. Generate or retrieve report
         pdf_path = ReportGenerator.generate_pdf_report(dataset_id)
-        return send_file(
+        resp = send_file(
             str(pdf_path),
             as_attachment=True,
             download_name=f"quantum_knn_report_{dataset_id}.pdf",
             mimetype="application/pdf",
         )
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Length"
+        return resp
     except Exception as e:
         existing_pdf = REPORTS_DIR / f"{dataset_id}_quantum_knn_report.pdf"
-        if existing_pdf.exists():
-            return send_file(
+        if existing_pdf.exists() and existing_pdf.stat().st_size > 1000:
+            resp = send_file(
                 str(existing_pdf),
                 as_attachment=True,
                 download_name=f"quantum_knn_report_{dataset_id}.pdf",
                 mimetype="application/pdf",
             )
-        return jsonify({"status": "error", "message": f"Report generation failed: {str(e)}"}), 400
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            resp.headers["Access-Control-Expose-Headers"] = "Content-Disposition, Content-Length"
+            return resp
+        resp = jsonify({"status": "error", "message": f"Report generation failed: {str(e)}"})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, 400
