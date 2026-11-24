@@ -13,27 +13,8 @@ export default function ProjectOverview() {
           Quantum k-Nearest Neighbour Classifier: Investigating Hybrid Feature Map Approach
         </h2>
         <p className="mt-1 text-xs text-slate-400">
-          Published in 2025 International Conference on Computing Technologies (ICOCT), Bangalore, India &bull; DOI: 10.1109/ICOCT64433.2025.11118830
+          Interactive Quantum Machine Learning Framework &bull; PennyLane Statevector Simulation &amp; Comparative KNN Benchmarking
         </p>
-      </div>
-
-      {/* Authors Card */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 backdrop-blur-md">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-3">Authors & Affiliations</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-lg bg-slate-950/60 p-3 border border-slate-800">
-            <h4 className="text-xs font-bold text-white">Prof. (Dr.) Savita Kumari Sheoran</h4>
-            <p className="text-[11px] text-slate-400 mt-1">Professor, Dept. of Computer Science & Engineering, Indira Gandhi University Meerpur, Rewari, Haryana-INDIA</p>
-          </div>
-          <div className="rounded-lg bg-slate-950/60 p-3 border border-slate-800">
-            <h4 className="text-xs font-bold text-white">Vikesh Yadav</h4>
-            <p className="text-[11px] text-slate-400 mt-1">Research Scholar, Dept. of Computer Science & Engineering, Indira Gandhi University Meerpur, Rewari, Haryana-INDIA</p>
-          </div>
-          <div className="rounded-lg bg-slate-950/60 p-3 border border-slate-800">
-            <h4 className="text-xs font-bold text-white">Rakesh Kumar Sheoran</h4>
-            <p className="text-[11px] text-slate-400 mt-1">Assistant Professor in Physics, SIASTE, Gurugram, Haryana-INDIA</p>
-          </div>
-        </div>
       </div>
 
       {/* Abstract & Motivation */}
