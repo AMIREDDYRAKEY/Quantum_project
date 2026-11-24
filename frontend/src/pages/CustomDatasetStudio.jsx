@@ -39,6 +39,7 @@ export default function CustomDatasetStudio() {
   const [results, setResults] = useState(null);
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   // Configuration Form State
@@ -202,6 +203,34 @@ export default function CustomDatasetStudio() {
       setErrorMsg(err.response?.data?.message || 'Prediction failed.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    if (!datasetId) return;
+    setDownloadingReport(true);
+    setErrorMsg('');
+    try {
+      const res = await api.downloadReportBlob(datasetId);
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `quantum_knn_research_report_${datasetId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 5000);
+    } catch (err) {
+      console.warn('Blob download failed, falling back to direct URL:', err);
+      try {
+        const directUrl = api.getReportDownloadUrl(datasetId);
+        window.open(directUrl, '_blank');
+      } catch (e) {
+        setErrorMsg('Failed to download PDF report. Ensure model is trained first.');
+      }
+    } finally {
+      setDownloadingReport(false);
     }
   };
 
@@ -1217,14 +1246,23 @@ export default function CustomDatasetStudio() {
               </div>
 
               {/* Direct Download Action Button */}
-              <a
-                href={api.getReportDownloadUrl(datasetId)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer flex-shrink-0"
+              <button
+                onClick={handleDownloadReport}
+                disabled={downloadingReport}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-6 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer flex-shrink-0 disabled:opacity-60"
               >
-                <Download className="h-4 w-4" /> Download Official PDF Report
-              </a>
+                {downloadingReport ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    <span>Download Official PDF Report</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
@@ -1440,14 +1478,23 @@ export default function CustomDatasetStudio() {
             </p>
 
             <div className="pt-2">
-              <a
-                href={api.getReportDownloadUrl(datasetId)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-8 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer"
+              <button
+                onClick={handleDownloadReport}
+                disabled={downloadingReport}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-8 py-3.5 text-xs font-black text-white shadow-xl shadow-cyan-500/25 hover:from-cyan-400 hover:to-indigo-500 transition cursor-pointer disabled:opacity-60"
               >
-                <Download className="h-4 w-4" /> Download Official PDF Research Report
-              </a>
+                {downloadingReport ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Generating & Downloading Report...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    <span>Download Official PDF Research Report</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

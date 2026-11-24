@@ -242,20 +242,71 @@ def get_quantum_circuit(dataset_id):
         return jsonify({"status": "error", "message": str(e)}), 404
 
 
+REPORTS_DIR = Path(__file__).resolve().parent.parent / "data" / "reports"
+UPLOAD_DIR = Path(__file__).resolve().parent.parent / "data" / "uploads"
+
+
 @dataset_custom_bp.route("/<dataset_id>/report", methods=["GET"])
 def download_report(dataset_id):
-    """Generates and serves a downloadable PDF research report."""
+    """
+    Generates and serves a downloadable PDF research report.
+    Resilient with auto-recovery for multi-worker and sample sessions.
+    """
     try:
+        existing_pdf = REPORTS_DIR / f"{dataset_id}_quantum_knn_report.pdf"
+
+        # Check if in-memory session is active & trained
+        try:
+            session = DatasetService.get_session(dataset_id)
+        except KeyError:
+            session = None
+
+        if not session or not session.get("trained"):
+            # Auto-recovery for sample datasets if memory cleared
+            if dataset_id.startswith("sample_"):
+                sample_name = dataset_id.replace("sample_", "").lower()
+                sample_map = {
+                    "iris": ("iris.csv", "target"),
+                    "student": ("student_performance.csv", "academic_result"),
+                    "student_performance": ("student_performance.csv", "academic_result"),
+                    "agriculture": ("agriculture_crop_recommendation.csv", "recommended_crop"),
+                    "crop": ("agriculture_crop_recommendation.csv", "recommended_crop"),
+                    "social": ("social_consumer_engagement.csv", "ad_purchase_decision"),
+                    "social_consumer": ("social_consumer_engagement.csv", "ad_purchase_decision"),
+                    "wine": ("wine.csv", "target"),
+                    "rain": ("rain.csv", "RainTomorrow"),
+                    "indian_liver": ("indian_liver.csv", "is_patient"),
+                }
+                if sample_name in sample_map:
+                    fname, target = sample_map[sample_name]
+                    sample_file = RAW_DATA_DIR / fname
+                    if sample_file.exists():
+                        df = pd.read_csv(sample_file)
+                        DatasetService.store_dataset(dataset_id, df, fname)
+                        DataPreprocessor.configure_and_preprocess(dataset_id, target_column=target, max_features=4)
+                        TrainingService.train_and_evaluate(dataset_id, k=3, feature_map="hybrid")
+            elif existing_pdf.exists():
+                return send_file(
+                    str(existing_pdf),
+                    as_attachment=True,
+                    download_name=f"quantum_knn_report_{dataset_id}.pdf",
+                    mimetype="application/pdf",
+                )
+
         pdf_path = ReportGenerator.generate_pdf_report(dataset_id)
-        if not pdf_path.exists():
-            return jsonify({"status": "error", "message": "Report generation failed."}), 500
         return send_file(
-            pdf_path,
+            str(pdf_path),
             as_attachment=True,
             download_name=f"quantum_knn_report_{dataset_id}.pdf",
-            mimetype="application/pdf"
+            mimetype="application/pdf",
         )
-    except KeyError as e:
-        return jsonify({"status": "error", "message": str(e)}), 404
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        existing_pdf = REPORTS_DIR / f"{dataset_id}_quantum_knn_report.pdf"
+        if existing_pdf.exists():
+            return send_file(
+                str(existing_pdf),
+                as_attachment=True,
+                download_name=f"quantum_knn_report_{dataset_id}.pdf",
+                mimetype="application/pdf",
+            )
+        return jsonify({"status": "error", "message": f"Report generation failed: {str(e)}"}), 400

@@ -76,6 +76,10 @@ export const api = {
     apiClient.get(`/dataset/${datasetId}/quantum-circuit`),
   getReportDownloadUrl: (datasetId) =>
     `${API_BASE_URL}/dataset/${datasetId}/report`,
+  downloadReportBlob: (datasetId) =>
+    apiClient.get(`/dataset/${datasetId}/report`, {
+      responseType: 'blob',
+    }),
 };
 
 export default api;
