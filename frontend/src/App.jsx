@@ -17,7 +17,7 @@ import ExperimentHistory from './pages/ExperimentHistory';
 import { api } from './services/api';
 
 export default function App() {
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState('prediction');
   const [activeDataset, setActiveDataset] = useState('iris');
   const [datasets, setDatasets] = useState([
     { id: 'iris', name: 'Iris Dataset', expected_records: 150 },

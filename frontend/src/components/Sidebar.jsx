@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 
 export const NAV_PAGES = [
-  { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard, section: 'Core' },
+  { id: 'prediction', name: '⚡ Live Q-KNN Demo', icon: PlayCircle, section: 'Core', badge: 'Interactive' },
+  { id: 'dashboard', name: 'Executive Dashboard', icon: LayoutDashboard, section: 'Core' },
   { id: 'overview', name: 'Project Overview', icon: BookOpen, section: 'Core' },
   { id: 'dataset-explorer', name: 'Dataset Explorer', icon: Database, section: 'Data' },
   { id: 'preprocessing', name: 'Data Preprocessing', icon: Sliders, section: 'Data' },
@@ -27,8 +28,7 @@ export const NAV_PAGES = [
   { id: 'adaptive-hybrid', name: 'Adaptive Hybrid QKNN', icon: Sparkles, section: 'Models', badge: 'Proposed' },
   { id: 'explainable-ai', name: 'Explainable AI', icon: HelpCircle, section: 'Analysis' },
   { id: 'comparison', name: 'Model Comparison', icon: GitCompare, section: 'Analysis' },
-  { id: 'prediction', name: 'Prediction Playground', icon: PlayCircle, section: 'Inference' },
-  { id: 'history', name: 'Experiment History', icon: History, section: 'Inference' },
+  { id: 'history', name: 'Experiment History', icon: History, section: 'Analysis' },
 ];
 
 export default function Sidebar({ activePage, setActivePage }) {

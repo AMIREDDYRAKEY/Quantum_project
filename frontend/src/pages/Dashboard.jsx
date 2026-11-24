@@ -103,16 +103,22 @@ export default function Dashboard({ activeDataset, setActivePage }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
-              onClick={() => setActivePage('adaptive-hybrid')}
-              className="flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/30 hover:bg-cyan-400 transition"
+              onClick={() => setActivePage('prediction')}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/25 hover:from-emerald-400 hover:to-cyan-400 transition cursor-pointer"
             >
-              Explore AH-QKNN Proposed Model <ArrowRight className="h-4 w-4" />
+              ⚡ Try Live Q-KNN Demo (Enter Values & Predict) <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setActivePage('adaptive-hybrid')}
+              className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition"
+            >
+              Explore AH-QKNN Proposed Model
             </button>
             <button
               onClick={() => setActivePage('comparison')}
               className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition"
             >
-              View Full Benchmark Matrix
+              Full Benchmark Matrix
             </button>
           </div>
         </div>

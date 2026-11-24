@@ -62,13 +62,13 @@ describe('Sidebar Component', () => {
     const setActivePage = vi.fn();
     render(<Sidebar activePage="dashboard" setActivePage={setActivePage} />);
 
-    expect(screen.getByText('Dashboard')).toBeDefined();
+    expect(screen.getByText('Executive Dashboard')).toBeDefined();
     expect(screen.getByText('Dataset Explorer')).toBeDefined();
     expect(screen.getByText('Quantum Feature Maps')).toBeDefined();
     expect(screen.getByText('Adaptive Hybrid QKNN')).toBeDefined();
     expect(screen.getByText('Explainable AI')).toBeDefined();
 
-    const playgroundButton = screen.getByText('Prediction Playground');
+    const playgroundButton = screen.getByText('⚡ Live Q-KNN Demo');
     fireEvent.click(playgroundButton);
     expect(setActivePage).toHaveBeenCalledWith('prediction');
   });
