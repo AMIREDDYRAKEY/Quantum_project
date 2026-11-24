@@ -68,8 +68,8 @@ export const api = {
     apiClient.post(`/dataset/${datasetId}/train`, params),
   getDatasetResults: (datasetId) =>
     apiClient.get(`/dataset/${datasetId}/results`),
-  predictCustomDataset: (datasetId, features) =>
-    apiClient.post(`/dataset/${datasetId}/predict`, { features }),
+  predictCustomDataset: (datasetId, features, modelType = 'hybrid') =>
+    apiClient.post(`/dataset/${datasetId}/predict`, { features, model_type: modelType }),
   batchPredictCustomDataset: (datasetId, records) =>
     apiClient.post(`/dataset/${datasetId}/batch-predict`, { records }),
   getDatasetCircuit: (datasetId) =>

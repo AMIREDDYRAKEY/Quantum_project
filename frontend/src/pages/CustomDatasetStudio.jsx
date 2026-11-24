@@ -18,7 +18,9 @@ import {
   GitCompare,
   Download,
   Info,
-  Check
+  Check,
+  Trophy,
+  Sparkles
 } from 'lucide-react';
 import {
   BarChart,
@@ -44,6 +46,7 @@ export default function CustomDatasetStudio() {
 
   // Configuration Form State
   const [targetColumn, setTargetColumn] = useState('');
+  const [selectedFeatures, setSelectedFeatures] = useState([]);
   const [testSize, setTestSize] = useState(0.20);
   const [maxFeatures, setMaxFeatures] = useState(4);
   const [featureSelectionMethod, setFeatureSelectionMethod] = useState('f_classif');
@@ -54,6 +57,10 @@ export default function CustomDatasetStudio() {
   const [k, setK] = useState(3);
   const [featureMap, setFeatureMap] = useState('hybrid');
   const [weightedVoting, setWeightedVoting] = useState(true);
+
+  // Model Selection for Visualization & Prediction
+  const [selectedDetailModel, setSelectedDetailModel] = useState('hybrid');
+  const [selectedPredictionModel, setSelectedPredictionModel] = useState('hybrid');
 
   // Prediction State
   const [manualFeatures, setManualFeatures] = useState({});
@@ -113,11 +120,8 @@ export default function CustomDatasetStudio() {
       const res = await api.getDatasetProfile(id);
       if (res.data?.data) {
         setProfile(res.data.data);
-        if (res.data.data.recommended_target) {
-          setTargetColumn(res.data.data.recommended_target);
-        } else if (res.data.data.candidate_target_columns?.length > 0) {
-          setTargetColumn(res.data.data.candidate_target_columns[0]);
-        }
+        const recTarget = res.data.data.recommended_target || res.data.data.candidate_target_columns?.[0] || '';
+        setTargetColumn(recTarget);
       }
     } catch (err) {
       console.error('Profile fetch failed:', err);
@@ -143,6 +147,7 @@ export default function CustomDatasetStudio() {
         scale_method: scaleMethod,
         sample_size: parseInt(sampleSize),
         random_state: 42,
+        selected_features: selectedFeatures.length > 0 ? selectedFeatures : undefined,
       });
       if (res.data?.data) {
         setConfigInfo(res.data.data);
@@ -190,11 +195,12 @@ export default function CustomDatasetStudio() {
   // ==========================================
   // STEP 5: PREDICT
   // ==========================================
-  const handlePredict = async () => {
+  const handlePredict = async (chosenModel) => {
+    const modelToUse = chosenModel || selectedPredictionModel || 'hybrid';
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await api.predictCustomDataset(datasetId, manualFeatures);
+      const res = await api.predictCustomDataset(datasetId, manualFeatures, modelToUse);
       if (res.data?.data) {
         setPrediction(res.data.data);
       }
@@ -412,6 +418,83 @@ export default function CustomDatasetStudio() {
         featureInsights: 'Continuous numerical attributes are standardized and mapped into unitary quantum rotation angles to explore non-Euclidean nearest-neighbor margins.',
       };
     }
+  };
+
+  const handleTargetChange = (newTarget) => {
+    setTargetColumn(newTarget);
+    if (selectedFeatures.includes(newTarget)) {
+      setSelectedFeatures(selectedFeatures.filter((f) => f !== newTarget));
+    }
+  };
+
+  const toggleFeature = (feat) => {
+    if (selectedFeatures.includes(feat)) {
+      setSelectedFeatures(selectedFeatures.filter((f) => f !== feat));
+    } else {
+      setSelectedFeatures([...selectedFeatures, feat]);
+    }
+  };
+
+  const selectAllFeatures = () => {
+    const candidates = overview?.column_names?.filter((c) => c !== targetColumn) || [];
+    setSelectedFeatures(candidates);
+  };
+
+  const clearAllFeatures = () => {
+    setSelectedFeatures([]);
+  };
+
+  const renderConfusionMatrix = (matrix, classes = []) => {
+    if (!matrix || !matrix.length) return null;
+    return (
+      <div className="overflow-x-auto">
+        <div className="inline-block min-w-full">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono mb-2">
+            Confusion Matrix (Rows: Ground Truth Class, Columns: Predicted Class)
+          </div>
+          <table className="border-collapse text-xs font-mono">
+            <thead>
+              <tr>
+                <th className="p-2 text-slate-500 text-[10px]">Actual \ Pred</th>
+                {classes.map((cls, j) => (
+                  <th key={j} className="p-2 text-center text-cyan-400 font-bold max-w-[90px] truncate" title={cls}>
+                    {cls}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {matrix.map((row, i) => (
+                <tr key={i} className="border-t border-slate-800/80">
+                  <td className="p-2 font-bold text-slate-300 max-w-[90px] truncate" title={classes[i] || `Class ${i}`}>
+                    {classes[i] || `Class ${i}`}
+                  </td>
+                  {row.map((val, j) => {
+                    const isDiag = i === j;
+                    return (
+                      <td
+                        key={j}
+                        className={`p-2.5 text-center font-bold ${
+                          isDiag
+                            ? val > 0
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : 'bg-slate-900 text-slate-500'
+                            : val > 0
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : 'bg-slate-950 text-slate-600'
+                        }`}
+                      >
+                        {val}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   };
 
   const stepsList = [
@@ -840,150 +923,262 @@ export default function CustomDatasetStudio() {
       {/* ========================================================= */}
       {/* STEP 3: QUANTUM PREPROCESSING CONFIGURATION               */}
       {/* ========================================================= */}
-      {currentStep === 3 && profile && (
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 space-y-5">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono">
-                Hardware & Simulator Preprocessing Safeguards
-              </span>
-              <h3 className="text-lg font-black text-white mt-1">Configure Target & Qubit Allocation</h3>
-              <p className="text-xs text-slate-300 mt-1">
-                Because quantum state simulation scales as $2^N$ complex amplitudes, the preprocessor uses ANOVA/PCA to automatically map your dataset into a compact, high-fidelity qubit representation.
-              </p>
-            </div>
+      {currentStep === 3 && profile && (() => {
+        const candidateFeatures = overview?.column_names?.filter((c) => c !== targetColumn) || [];
+        const activeCount = selectedFeatures.length > 0 ? selectedFeatures.length : candidateFeatures.length;
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Target Column Selector */}
-              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <label className="text-xs font-bold text-slate-200 block mb-1">Target Class Column</label>
-                <select
-                  value={targetColumn}
-                  onChange={(e) => setTargetColumn(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-bold text-cyan-400 focus:outline-none"
-                >
-                  {profile.candidate_target_columns?.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                  {overview.column_names.filter(c => !profile.candidate_target_columns?.includes(c)).map((c) => (
-                    <option key={c} value={c}>{c} (User Selected)</option>
-                  ))}
-                </select>
-                <span className="text-[10px] text-slate-500 mt-1 block">Column to classify</span>
+        return (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 space-y-5">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono">
+                  Hardware & Simulator Preprocessing Safeguards
+                </span>
+                <h3 className="text-lg font-black text-white mt-1">Configure Target, Feature Selection & Qubit Allocation</h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Because quantum state simulation scales as $2^N$ complex amplitudes, the preprocessor uses ANOVA/PCA to automatically map your selected dataset features into a compact, high-fidelity qubit representation.
+                </p>
               </div>
 
-              {/* Max Qubits / Features */}
-              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <label className="text-xs font-bold text-slate-200 block mb-1">
-                  Qubit Count: <strong className="text-cyan-400">{maxFeatures} Qubits</strong>
-                </label>
-                <input
-                  type="range"
-                  min={2}
-                  max={8}
-                  step={1}
-                  value={maxFeatures}
-                  onChange={(e) => setMaxFeatures(parseInt(e.target.value))}
-                  className="w-full accent-cyan-400 mt-2 cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
-                  <span>2 Qubits (Fast)</span>
-                  <span>4 Qubits (Optimal)</span>
-                  <span>8 Qubits (Deep)</span>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {/* Target Column Selector */}
+                <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
+                  <label className="text-xs font-bold text-slate-200 block mb-1">Target Class Column</label>
+                  <select
+                    value={targetColumn}
+                    onChange={(e) => handleTargetChange(e.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-bold text-cyan-400 focus:outline-none"
+                  >
+                    {profile.candidate_target_columns?.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    {overview.column_names.filter(c => !profile.candidate_target_columns?.includes(c)).map((c) => (
+                      <option key={c} value={c}>{c} (User Selected)</option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-slate-500 mt-1 block">Column to classify (automatically excluded from features)</span>
+                </div>
+
+                {/* Max Qubits / Features */}
+                <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
+                  <label className="text-xs font-bold text-slate-200 block mb-1">
+                    Qubit Count: <strong className="text-cyan-400">{maxFeatures} Qubits</strong>
+                  </label>
+                  <input
+                    type="range"
+                    min={2}
+                    max={8}
+                    step={1}
+                    value={maxFeatures}
+                    onChange={(e) => setMaxFeatures(parseInt(e.target.value))}
+                    className="w-full accent-cyan-400 mt-2 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+                    <span>2 Qubits (Fast)</span>
+                    <span>4 Qubits (Optimal)</span>
+                    <span>8 Qubits (Deep)</span>
+                  </div>
+                </div>
+
+                {/* Feature Selection Method */}
+                <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
+                  <label className="text-xs font-bold text-slate-200 block mb-1">Dimensionality Reduction</label>
+                  <select
+                    value={featureSelectionMethod}
+                    onChange={(e) => setFeatureSelectionMethod(e.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-semibold text-white focus:outline-none"
+                  >
+                    <option value="f_classif">ANOVA F-Value (Supervised Selection)</option>
+                    <option value="mutual_info">Mutual Information Criterion</option>
+                    <option value="pca">Principal Component Analysis (PCA)</option>
+                  </select>
+                  <span className="text-[10px] text-slate-500 mt-1 block">Algorithm to compress features to qubits</span>
+                </div>
+
+                {/* Train / Test Split Ratio */}
+                <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
+                  <label className="text-xs font-bold text-slate-200 block mb-1">
+                    Train/Test Split: <strong className="text-indigo-400">{(100 - testSize * 100).toFixed(0)}:{ (testSize * 100).toFixed(0) }</strong>
+                  </label>
+                  <input
+                    type="range"
+                    min={0.10}
+                    max={0.40}
+                    step={0.05}
+                    value={testSize}
+                    onChange={(e) => setTestSize(parseFloat(e.target.value))}
+                    className="w-full accent-indigo-400 mt-2 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+                    <span>90:10</span>
+                    <span>80:20 (Standard)</span>
+                    <span>60:40</span>
+                  </div>
+                </div>
+
+                {/* Feature Scaling Method */}
+                <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
+                  <label className="text-xs font-bold text-slate-200 block mb-1">Feature Scaler</label>
+                  <select
+                    value={scaleMethod}
+                    onChange={(e) => setScaleMethod(e.target.value)}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-semibold text-white focus:outline-none"
+                  >
+                    <option value="standard">StandardScaler (Zero-mean, Unit-variance)</option>
+                    <option value="minmax">MinMaxScaler ([-1, 1] range)</option>
+                  </select>
+                  <span className="text-[10px] text-slate-500 mt-1 block">Fitted strictly on training data</span>
+                </div>
+
+                {/* Sample Subsampling Guard */}
+                <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
+                  <label className="text-xs font-bold text-slate-200 block mb-1">
+                    Quantum Runtime Sample Guard: <strong className="text-cyan-400">{sampleSize} samples</strong>
+                  </label>
+                  <select
+                    value={sampleSize}
+                    onChange={(e) => setSampleSize(parseInt(e.target.value))}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-semibold text-white focus:outline-none"
+                  >
+                    <option value="150">150 Samples (Fastest ~1s)</option>
+                    <option value="200">200 Samples (Standard ~2s)</option>
+                    <option value="350">350 Samples (Detailed ~5s)</option>
+                    <option value="500">500 Samples (Full scale ~10s)</option>
+                  </select>
+                  <span className="text-[10px] text-slate-500 mt-1 block">Preserves stratification</span>
                 </div>
               </div>
 
-              {/* Feature Selection Method */}
-              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <label className="text-xs font-bold text-slate-200 block mb-1">Dimensionality Reduction</label>
-                <select
-                  value={featureSelectionMethod}
-                  onChange={(e) => setFeatureSelectionMethod(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-semibold text-white focus:outline-none"
-                >
-                  <option value="f_classif">ANOVA F-Value (Supervised Selection)</option>
-                  <option value="mutual_info">Mutual Information Criterion</option>
-                  <option value="pca">Principal Component Analysis (PCA)</option>
-                </select>
-                <span className="text-[10px] text-slate-500 mt-1 block">Algorithm to compress features to qubits</span>
-              </div>
-
-              {/* Train / Test Split Ratio */}
-              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <label className="text-xs font-bold text-slate-200 block mb-1">
-                  Train/Test Split: <strong className="text-indigo-400">{(100 - testSize * 100).toFixed(0)}:{ (testSize * 100).toFixed(0) }</strong>
-                </label>
-                <input
-                  type="range"
-                  min={0.10}
-                  max={0.40}
-                  step={0.05}
-                  value={testSize}
-                  onChange={(e) => setTestSize(parseFloat(e.target.value))}
-                  className="w-full accent-indigo-400 mt-2 cursor-pointer"
-                />
-                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
-                  <span>90:10</span>
-                  <span>80:20 (Standard)</span>
-                  <span>60:40</span>
+              {/* Explicit Feature Selection Checklist */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                      <Sliders className="h-3.5 w-3.5" /> Feature Selection & Inclusion Checklist
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Target column <span className="font-mono text-emerald-400 font-bold">{targetColumn}</span> is automatically excluded.
+                      {selectedFeatures.length === 0
+                        ? ` Currently considering all ${candidateFeatures.length} candidate features.`
+                        : ` Explicitly selected ${selectedFeatures.length} of ${candidateFeatures.length} features.`}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={selectAllFeatures}
+                      className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 text-[11px] font-medium"
+                    >
+                      Select All ({candidateFeatures.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAllFeatures}
+                      className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-medium"
+                    >
+                      Auto-Select All
+                    </button>
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 pt-1">
+                  {candidateFeatures.map((feat) => {
+                    const isSelected = selectedFeatures.length === 0 || selectedFeatures.includes(feat);
+                    const colType = overview?.data_types?.[feat] || 'numerical';
+                    return (
+                      <button
+                        key={feat}
+                        type="button"
+                        onClick={() => toggleFeature(feat)}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-left transition text-xs ${
+                          isSelected
+                            ? 'border-cyan-500/50 bg-cyan-950/40 text-white'
+                            : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="truncate pr-1">
+                          <span className="font-mono font-medium block truncate text-[11px]">{feat}</span>
+                          <span className="text-[9px] text-slate-500">{colType}</span>
+                        </div>
+                        <div
+                          className={`h-4 w-4 rounded flex items-center justify-center flex-shrink-0 text-[10px] ${
+                            isSelected ? 'bg-cyan-500 text-slate-950 font-bold' : 'border border-slate-700 bg-slate-900'
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {activeCount > maxFeatures && (
+                  <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/30 p-2.5 text-[11px] text-indigo-300 flex items-center gap-2">
+                    <Info className="h-4 w-4 flex-shrink-0 text-indigo-400" />
+                    <span>
+                      <strong>Dimensionality reduction notice:</strong> {activeCount} candidate features selected, which exceeds the configured qubit count ({maxFeatures}). {featureSelectionMethod.toUpperCase()} will automatically extract the top {maxFeatures} optimal features for quantum circuit encoding.
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Feature Scaling Method */}
-              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <label className="text-xs font-bold text-slate-200 block mb-1">Feature Scaler</label>
-                <select
-                  value={scaleMethod}
-                  onChange={(e) => setScaleMethod(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-semibold text-white focus:outline-none"
+              {/* Live Resource & Preprocessing Shape Indicator Card */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block">
+                  Quantum Resource & Preprocessing Summary
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="rounded-lg bg-slate-900 p-2.5 border border-slate-800">
+                    <span className="text-[10px] text-slate-500 block">Original Dataset Shape</span>
+                    <strong className="text-white font-mono">{overview.total_rows} rows &times; {overview.total_columns} cols</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-900 p-2.5 border border-slate-800">
+                    <span className="text-[10px] text-slate-500 block">Qubit Hilbert Space</span>
+                    <strong className="text-cyan-400 font-mono">{maxFeatures} Qubits (2^{maxFeatures} = {2**maxFeatures} dims)</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-900 p-2.5 border border-slate-800">
+                    <span className="text-[10px] text-slate-500 block">Estimated Train / Test</span>
+                    <strong className="text-indigo-400 font-mono">
+                      ~{Math.round(sampleSize * (1 - testSize))} train / ~{Math.round(sampleSize * testSize)} test
+                    </strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-900 p-2.5 border border-slate-800">
+                    <span className="text-[10px] text-slate-500 block">Feature Scaling</span>
+                    <strong className="text-emerald-400 font-mono">{scaleMethod === 'standard' ? 'StandardScaler' : 'MinMaxScaler'}</strong>
+                  </div>
+                </div>
+
+                {profile.class_imbalance_warning && (
+                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-[11px] text-amber-300 flex items-center gap-2 mt-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span>{profile.class_imbalance_warning}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+                <button
+                  onClick={() => setCurrentStep(2)}
+                  className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white"
                 >
-                  <option value="standard">StandardScaler (Zero-mean, Unit-variance)</option>
-                  <option value="minmax">MinMaxScaler ([-1, 1] range)</option>
-                </select>
-                <span className="text-[10px] text-slate-500 mt-1 block">Fitted strictly on training data</span>
-              </div>
-
-              {/* Sample Subsampling Guard */}
-              <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <label className="text-xs font-bold text-slate-200 block mb-1">
-                  Quantum Runtime Sample Guard: <strong className="text-cyan-400">{sampleSize} samples</strong>
-                </label>
-                <select
-                  value={sampleSize}
-                  onChange={(e) => setSampleSize(parseInt(e.target.value))}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-xs font-semibold text-white focus:outline-none"
+                  <ArrowLeft className="h-4 w-4" /> Back to Profile
+                </button>
+                <button
+                  onClick={handleConfigure}
+                  disabled={loading}
+                  className="flex items-center gap-2 rounded-xl bg-cyan-500 px-6 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 transition"
                 >
-                  <option value="150">150 Samples (Fastest ~1s)</option>
-                  <option value="200">200 Samples (Standard ~2s)</option>
-                  <option value="350">350 Samples (Detailed ~5s)</option>
-                  <option value="500">500 Samples (Full scale ~10s)</option>
-                </select>
-                <span className="text-[10px] text-slate-500 mt-1 block">Preserves stratification</span>
+                  {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  Apply Configuration & Preprocess
+                </button>
               </div>
-            </div>
-
-            <div className="flex justify-between items-center pt-4 border-t border-slate-800">
-              <button
-                onClick={() => setCurrentStep(2)}
-                className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-300 hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4" /> Back to Profile
-              </button>
-              <button
-                onClick={handleConfigure}
-                disabled={loading}
-                className="flex items-center gap-2 rounded-xl bg-cyan-500 px-6 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/25 hover:bg-cyan-400 transition"
-              >
-                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Apply Configuration & Preprocess
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================= */}
-      {/* STEP 4: MODEL TRAINING                                     */}
+      {/* STEP 4: MODEL TRAINING & 5-MODEL BENCHMARK                 */}
       {/* ========================================================= */}
       {currentStep === 4 && configInfo && (
         <div className="space-y-6">
@@ -992,9 +1187,9 @@ export default function CustomDatasetStudio() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono">
                 Training Preprocessed Configuration
               </span>
-              <h3 className="text-lg font-black text-white mt-1">Execute Benchmark & Quantum Simulation</h3>
-              <p className="text-xs text-slate-300 mt-1">
-                {configInfo.explanation}
+              <h3 className="text-lg font-black text-white mt-1">Execute 5-Model Research Benchmark</h3>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                In accordance with quantum research standards, clicking Train evaluates <strong>Classical KNN</strong> alongside all four quantum feature maps (<strong>Z, ZZ, Pauli, Hybrid</strong>) concurrently on identical stratified splits. The primary feature map selected below serves as the highlighted ansatz for circuit inspection.
               </p>
             </div>
 
@@ -1017,7 +1212,7 @@ export default function CustomDatasetStudio() {
 
               {/* Feature Map */}
               <div className="rounded-xl bg-slate-950 p-4 border border-slate-800">
-                <label className="text-xs font-bold text-slate-200 block mb-1">Quantum Feature Map</label>
+                <label className="text-xs font-bold text-slate-200 block mb-1">Primary Feature Map Focus</label>
                 <select
                   value={featureMap}
                   onChange={(e) => setFeatureMap(e.target.value)}
@@ -1029,7 +1224,7 @@ export default function CustomDatasetStudio() {
                   <option value="z">Z Feature Map (Product State)</option>
                   <option value="angle">Simple Angle Encoding</option>
                 </select>
-                <span className="text-[10px] text-slate-500 mt-1 block">Circuit ansatz for state preparation</span>
+                <span className="text-[10px] text-slate-500 mt-1 block">Ansatz highlighted for circuit schematic deep-dive</span>
               </div>
 
               {/* Weighted Voting Toggle */}
@@ -1044,10 +1239,41 @@ export default function CustomDatasetStudio() {
                     className="h-4 w-4 accent-cyan-400 cursor-pointer"
                   />
                   <label htmlFor="weighted-voting" className="text-xs font-semibold text-slate-300 cursor-pointer">
-                    Fidelity-Weighted Voting (w ∝ F)
+                    Fidelity-Weighted Voting (w &prop; F)
                   </label>
                 </div>
                 <span className="text-[10px] text-slate-500 mt-1.5 block">Weights votes by exact quantum state overlap</span>
+              </div>
+            </div>
+
+            {/* Evaluated Feature Maps Architecture Breakdown */}
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono block">
+                Concurrent 5-Model Benchmark Overview
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+                <div className="rounded-lg bg-slate-900 p-3 border border-slate-800">
+                  <div className="font-bold text-cyan-300 text-xs">Z Feature Map</div>
+                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">Hadamard + RZ(x)</div>
+                  <p className="text-[10px] text-slate-400 mt-1">Product state encoding with zero entanglement between qubits.</p>
+                </div>
+                <div className="rounded-lg bg-slate-900 p-3 border border-slate-800">
+                  <div className="font-bold text-indigo-300 text-xs">ZZ Feature Map</div>
+                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">CNOT Ladder + RZ(x_j x_k)</div>
+                  <p className="text-[10px] text-slate-400 mt-1">Pairwise qubit entanglement capturing 2nd-order feature correlations.</p>
+                </div>
+                <div className="rounded-lg bg-slate-900 p-3 border border-slate-800">
+                  <div className="font-bold text-amber-300 text-xs">Pauli Feature Map</div>
+                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">RX + RY + RZ + CNOT</div>
+                  <p className="text-[10px] text-slate-400 mt-1">Full 3-axis Bloch sphere rotation with entangling gates.</p>
+                </div>
+                <div className="rounded-lg bg-slate-900 p-3 border border-cyan-500/30 bg-cyan-950/20">
+                  <div className="font-bold text-emerald-300 text-xs flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" /> Hybrid Feature Map
+                  </div>
+                  <div className="text-[10px] text-cyan-400 font-mono mt-0.5">Z + ZZ + Pauli Synthesized</div>
+                  <p className="text-[10px] text-slate-300 mt-1">Maximizes Hilbert state expressivity by combining all three ansatzes.</p>
+                </div>
               </div>
             </div>
 
@@ -1066,12 +1292,12 @@ export default function CustomDatasetStudio() {
                 {loading ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Executing Quantum Simulator ({configInfo.qubit_count} Qubits)...</span>
+                    <span>Simulating Quantum States across Z, ZZ, Pauli &amp; Hybrid Maps...</span>
                   </>
                 ) : (
                   <>
                     <Cpu className="h-4 w-4" />
-                    <span>Train Classical KNN & Quantum KNN</span>
+                    <span>Train Classical KNN &amp; 4 Quantum Feature Maps</span>
                   </>
                 )}
               </button>
@@ -1265,6 +1491,287 @@ export default function CustomDatasetStudio() {
               </div>
             </div>
 
+            {/* 5-Model Research Benchmark Matrix Table */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <GitCompare className="h-4 w-4 text-cyan-400" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                    5-Model Research Benchmark Matrix (Quantum Feature Maps vs. Classical Baseline)
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {results.best_model && (
+                    <span className="rounded-full bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 text-amber-300 font-bold flex items-center gap-1">
+                      <Trophy className="h-3.5 w-3.5" /> Best: {results.best_model}
+                    </span>
+                  )}
+                  {results.best_quantum_map && (
+                    <span className="rounded-full bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 text-cyan-300 font-mono flex items-center gap-1">
+                      <Sparkles className="h-3.5 w-3.5" /> Optimal Q-Map: {results.best_quantum_map.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[11px] font-bold uppercase text-slate-400 font-mono">
+                      <th className="py-2.5 px-3">Model Architecture</th>
+                      <th className="py-2.5 px-3">Paradigm</th>
+                      <th className="py-2.5 px-3">Test Accuracy</th>
+                      <th className="py-2.5 px-3">Macro Precision</th>
+                      <th className="py-2.5 px-3">Macro Recall</th>
+                      <th className="py-2.5 px-3">Macro F1</th>
+                      <th className="py-2.5 px-3">Latency</th>
+                      <th className="py-2.5 px-3">Benchmark Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {(results.comparison_table || []).map((m, idx) => (
+                      <tr
+                        key={idx}
+                        onClick={() => setSelectedDetailModel(m.model_name)}
+                        className={`transition cursor-pointer ${
+                          selectedDetailModel === m.model_name
+                            ? 'bg-cyan-950/40 border-l-2 border-cyan-400'
+                            : 'hover:bg-slate-850/50'
+                        }`}
+                      >
+                        <td className="py-2.5 px-3 font-sans font-bold text-white flex items-center gap-1.5">
+                          {m.paradigm === 'Quantum' ? <Cpu className="h-3.5 w-3.5 text-cyan-400" /> : <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />}
+                          <span>{m.display_name}</span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.paradigm === 'Quantum' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/40' : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'}`}>
+                            {m.paradigm}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-emerald-400">{(m.accuracy * 100).toFixed(2)}%</td>
+                        <td className="py-2.5 px-3 text-slate-300">{(m.precision_macro * 100).toFixed(2)}%</td>
+                        <td className="py-2.5 px-3 text-slate-300">{(m.recall_macro * 100).toFixed(2)}%</td>
+                        <td className="py-2.5 px-3 font-bold text-white">{(m.f1_macro * 100).toFixed(2)}%</td>
+                        <td className="py-2.5 px-3 text-slate-400">{m.latency_sec}s</td>
+                        <td className="py-2.5 px-3 font-sans">
+                          {m.is_best_model ? (
+                            <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
+                              <Trophy className="h-3 w-3" /> Leading Model
+                            </span>
+                          ) : m.is_best_quantum ? (
+                            <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-300 border border-cyan-500/40 inline-flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" /> Optimal Feature Map
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 text-[10px]">Evaluated</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Hybrid Feature Map Research Investigation Card */}
+            {results.hybrid_analysis && (
+              <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-slate-900 via-indigo-950/20 to-slate-900 p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono">
+                      Research Investigation Focus
+                    </span>
+                    <h3 className="text-sm font-bold text-white mt-0.5 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-cyan-400" />
+                      Hybrid Feature Map vs. Individual Quantum Feature Maps
+                    </h3>
+                  </div>
+                  <span className="text-xs text-indigo-300 font-mono">
+                    Synthesizes Z (Product), ZZ (CNOT Entanglement) &amp; Pauli (3-Axis)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
+                    <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Z Feature Map</span>
+                    <strong className={`text-sm font-bold ${results.hybrid_analysis.delta_accuracy_vs_z >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {results.hybrid_analysis.delta_accuracy_vs_z >= 0 ? '+' : ''}
+                      {(results.hybrid_analysis.delta_accuracy_vs_z * 100).toFixed(2)}%
+                    </strong>
+                    <div className="text-[10px] text-slate-500 font-mono">F1: {(results.hybrid_analysis.delta_f1_vs_z * 100).toFixed(1)}%</div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
+                    <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. ZZ Feature Map</span>
+                    <strong className={`text-sm font-bold ${results.hybrid_analysis.delta_accuracy_vs_zz >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {results.hybrid_analysis.delta_accuracy_vs_zz >= 0 ? '+' : ''}
+                      {(results.hybrid_analysis.delta_accuracy_vs_zz * 100).toFixed(2)}%
+                    </strong>
+                    <div className="text-[10px] text-slate-500 font-mono">F1: {(results.hybrid_analysis.delta_f1_vs_zz * 100).toFixed(1)}%</div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
+                    <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Pauli Feature Map</span>
+                    <strong className={`text-sm font-bold ${results.hybrid_analysis.delta_accuracy_vs_pauli >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {results.hybrid_analysis.delta_accuracy_vs_pauli >= 0 ? '+' : ''}
+                      {(results.hybrid_analysis.delta_accuracy_vs_pauli * 100).toFixed(2)}%
+                    </strong>
+                    <div className="text-[10px] text-slate-500 font-mono">F1: {(results.hybrid_analysis.delta_f1_vs_pauli * 100).toFixed(1)}%</div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-1">
+                    <span className="text-[10px] text-slate-400 font-mono block">&Delta; vs. Classical KNN</span>
+                    <strong className={`text-sm font-bold ${results.hybrid_analysis.delta_accuracy_vs_classical >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {results.hybrid_analysis.delta_accuracy_vs_classical >= 0 ? '+' : ''}
+                      {(results.hybrid_analysis.delta_accuracy_vs_classical * 100).toFixed(2)}%
+                    </strong>
+                    <div className="text-[10px] text-slate-500 font-mono">F1: {(results.hybrid_analysis.delta_f1_vs_classical * 100).toFixed(1)}%</div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-slate-950/80 p-3.5 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+                  <strong className="text-cyan-300">Empirical Research Insight: </strong>
+                  {results.hybrid_analysis.recommendation}
+                </div>
+              </div>
+            )}
+
+            {/* Performance Comparison Bar Chart */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 mb-3">
+                5-Model Empirical Accuracy &amp; Macro F1-Score Benchmark
+              </h3>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={(results.comparison_table || [
+                      { display_name: 'Classical KNN', accuracy: results.classical_knn.accuracy, f1_macro: results.classical_knn.f1_macro },
+                      { display_name: 'Quantum KNN', accuracy: results.quantum_knn.accuracy, f1_macro: results.quantum_knn.f1_macro },
+                    ]).map((m) => ({
+                      name: m.display_name.replace(' Feature Map', '').replace(' QKNN', ''),
+                      Accuracy: +(m.accuracy * 100).toFixed(1),
+                      'Macro F1': +(m.f1_macro * 100).toFixed(1),
+                    }))}
+                  >
+                    <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} />
+                    <YAxis domain={[0, 100]} stroke="#94A3B8" fontSize={11} unit="%" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#020617', borderColor: '#1E293B', borderRadius: '0.75rem' }}
+                      formatter={(val) => [`${Number(val).toFixed(1)}%`, '']}
+                    />
+                    <Legend />
+                    <Bar dataKey="Accuracy" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Macro F1" fill="#6366F1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Interactive Model Deep-Dive & Circuit Inspection Tabs */}
+            {(() => {
+              const activeModelData = selectedDetailModel === 'classical'
+                ? results.classical_knn
+                : (results.all_quantum_models?.[selectedDetailModel] || results.quantum_knn);
+
+              return (
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                        <Cpu className="h-4 w-4 text-cyan-400" />
+                        Model Deep-Dive: Confusion Matrix &amp; Circuit Telemetry
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Select a model below to inspect its confusion matrix error distribution and quantum circuit schematic.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 text-xs">
+                      {[
+                        { id: 'hybrid', label: 'Hybrid QKNN' },
+                        { id: 'pauli', label: 'Pauli QKNN' },
+                        { id: 'zz', label: 'ZZ QKNN' },
+                        { id: 'z', label: 'Z QKNN' },
+                        { id: 'classical', label: 'Classical KNN' },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setSelectedDetailModel(tab.id)}
+                          className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
+                            selectedDetailModel === tab.id
+                              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/25'
+                              : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {activeModelData && (
+                    <div className="space-y-4">
+                      {/* Metric Ribbon */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                          <span className="text-[10px] text-slate-400 block font-mono">Test Accuracy</span>
+                          <strong className="text-base font-bold text-emerald-400">
+                            {(activeModelData.accuracy * 100).toFixed(1)}%
+                          </strong>
+                        </div>
+                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                          <span className="text-[10px] text-slate-400 block font-mono">Macro F1-Score</span>
+                          <strong className="text-base font-bold text-white">
+                            {(activeModelData.f1_macro * 100).toFixed(1)}%
+                          </strong>
+                        </div>
+                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                          <span className="text-[10px] text-slate-400 block font-mono">Precision / Recall</span>
+                          <strong className="text-xs font-bold text-indigo-300 font-mono">
+                            {(activeModelData.precision_macro * 100).toFixed(1)}% / {(activeModelData.recall_macro * 100).toFixed(1)}%
+                          </strong>
+                        </div>
+                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                          <span className="text-[10px] text-slate-400 block font-mono">Inference Time</span>
+                          <strong className="text-xs font-bold text-amber-300 font-mono">
+                            {activeModelData.inference_time_sec ?? activeModelData.prediction_time_sec ?? '--'}s
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Confusion Matrix Display */}
+                      {activeModelData.confusion_matrix && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                          {renderConfusionMatrix(activeModelData.confusion_matrix, results.classes)}
+                        </div>
+                      )}
+
+                      {/* Quantum Circuit Architecture Telemetry */}
+                      {selectedDetailModel !== 'classical' && (activeModelData.circuit_summary?.ascii_diagram || results.circuit_summary?.ascii_diagram) && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+                          <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                            <span className="text-[11px] font-bold text-cyan-400 font-mono flex items-center gap-1.5">
+                              <Cpu className="h-3.5 w-3.5" /> PennyLane Circuit Schematic ({activeModelData.circuit_summary?.n_wires || results.qubits_used} Qubits &bull; {selectedDetailModel.toUpperCase()} Feature Map)
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {activeModelData.circuit_summary?.total_gates || results.circuit_summary?.total_gates} Total Gates &bull; {activeModelData.circuit_summary?.cnot_gates ?? results.circuit_summary?.cnot_gates ?? 0} CNOT Entanglers
+                            </span>
+                          </div>
+                          <div className="overflow-x-auto rounded-lg bg-slate-900/90 p-3 border border-slate-800/80">
+                            <pre className="font-mono text-xs text-cyan-300 leading-relaxed whitespace-pre">
+                              {activeModelData.circuit_summary?.ascii_diagram || results.circuit_summary?.ascii_diagram}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Descriptive Empirical Evaluation Narrative Card */}
+
             {/* Descriptive Empirical Evaluation Narrative Card */}
             <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-900 p-6 space-y-3">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -1306,55 +1813,6 @@ export default function CustomDatasetStudio() {
               </div>
             </div>
 
-            {/* Performance Comparison Bar Chart */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 mb-3">
-                Performance Benchmark Comparison
-              </h3>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={[
-                      { metric: 'Accuracy', Classical: results.classical_knn.accuracy * 100, Quantum: results.quantum_knn.accuracy * 100 },
-                      { metric: 'Precision (Macro)', Classical: results.classical_knn.precision_macro * 100, Quantum: results.quantum_knn.precision_macro * 100 },
-                      { metric: 'Recall (Macro)', Classical: results.classical_knn.recall_macro * 100, Quantum: results.quantum_knn.recall_macro * 100 },
-                      { metric: 'F1-Score (Macro)', Classical: results.classical_knn.f1_macro * 100, Quantum: results.quantum_knn.f1_macro * 100 },
-                    ]}
-                  >
-                    <XAxis dataKey="metric" stroke="#94A3B8" fontSize={11} />
-                    <YAxis domain={[0, 100]} stroke="#94A3B8" fontSize={11} unit="%" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#020617', borderColor: '#1E293B', borderRadius: '0.75rem' }}
-                      formatter={(val) => [`${Number(val).toFixed(1)}%`, '']}
-                    />
-                    <Legend />
-                    <Bar dataKey="Classical" fill="#6366F1" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Quantum" fill="#10B981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Circuit Details */}
-            {results.circuit_summary?.ascii_diagram && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                    <Cpu className="h-4 w-4 text-cyan-400" />
-                    PennyLane Quantum Feature Map Circuit ({results.qubits_used} Qubits)
-                  </h3>
-                  <span className="text-xs font-mono text-cyan-400">
-                    {results.circuit_summary.total_gates} Total Gates &bull; {results.circuit_summary.cnot_gates} CNOT Entanglers
-                  </span>
-                </div>
-                <div className="overflow-x-auto rounded-xl bg-slate-950 p-4 border border-slate-800">
-                  <pre className="font-mono text-xs text-cyan-300 leading-relaxed whitespace-pre">
-                    {results.circuit_summary.ascii_diagram}
-                  </pre>
-                </div>
-              </div>
-            )}
-
             <div className="flex justify-between items-center pt-2">
               <button
                 onClick={() => setCurrentStep(4)}
@@ -1393,8 +1851,46 @@ export default function CustomDatasetStudio() {
               </span>
               <h3 className="text-lg font-black text-white mt-1">Classify New Custom Instances</h3>
               <p className="text-xs text-slate-300 mt-1">
-                Enter values for the selected feature columns ({configInfo.selected_feature_names.join(', ')}). The system scales them and computes quantum state overlap fidelities against training samples.
+                Enter values for the selected feature columns ({configInfo.selected_feature_names.join(', ')}). The system scales them and computes quantum state overlap fidelities against training samples without retraining.
               </p>
+            </div>
+
+            {/* Inference Architecture Selector Pill Bar */}
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span className="text-xs font-bold text-slate-200">Select Inference Model Architecture</span>
+                <span className="text-[10px] text-cyan-400 font-mono">Instant live inference &bull; Statevectors cached in session</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                {[
+                  { id: 'hybrid', label: 'Hybrid QKNN', badge: 'Optimal Map', icon: Sparkles },
+                  { id: 'pauli', label: 'Pauli QKNN', badge: '3-Axis Rot', icon: Cpu },
+                  { id: 'zz', label: 'ZZ QKNN', badge: 'Entangled', icon: Cpu },
+                  { id: 'z', label: 'Z QKNN', badge: 'Product State', icon: Cpu },
+                  { id: 'classical', label: 'Classical KNN', badge: 'Euclidean', icon: BarChart2 },
+                ].map((m) => {
+                  const Icon = m.icon;
+                  const isSelected = selectedPredictionModel === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setSelectedPredictionModel(m.id)}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                        isSelected
+                          ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300 shadow-md shadow-cyan-500/20'
+                          : 'border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{m.label}</span>
+                      </div>
+                      <span className="text-[9px] font-mono text-slate-500 mt-0.5">{m.badge}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Input Feature Fields */}
@@ -1434,12 +1930,12 @@ export default function CustomDatasetStudio() {
 
             <div className="flex justify-center pt-2">
               <button
-                onClick={handlePredict}
+                onClick={() => handlePredict(selectedPredictionModel)}
                 disabled={loading}
                 className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-8 py-3 text-xs font-black text-slate-950 shadow-xl shadow-cyan-500/25 hover:from-emerald-400 hover:to-cyan-400 transition"
               >
                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-                Run Live Quantum & Classical Prediction
+                Run Live Prediction with {selectedPredictionModel.toUpperCase()}
               </button>
             </div>
 
@@ -1448,13 +1944,20 @@ export default function CustomDatasetStudio() {
               <div className="rounded-2xl border border-cyan-500/40 bg-gradient-to-br from-slate-900 via-cyan-950/20 to-slate-900 p-6 space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Predicted Class</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Predicted Class</span>
+                      <span className="rounded bg-cyan-950 px-2 py-0.5 text-[9px] font-mono font-bold text-cyan-300 border border-cyan-800/40 uppercase">
+                        Model: {prediction.model_type || selectedPredictionModel}
+                      </span>
+                    </div>
                     <h3 className="text-2xl font-black text-emerald-400 mt-0.5 capitalize">
-                      {prediction.quantum_predicted_class}
+                      {prediction.predicted_class || prediction.quantum_predicted_class}
                     </h3>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Classical Match</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      {prediction.confidence ? `${(prediction.confidence * 100).toFixed(1)}% Consensus` : 'Classical Match'}
+                    </span>
                     <span className={`text-sm font-bold ${prediction.agreement ? 'text-emerald-400' : 'text-amber-400'}`}>
                       {prediction.agreement ? '✓ 100% Agreement' : `Classical: ${prediction.classical_predicted_class}`}
                     </span>
@@ -1475,7 +1978,7 @@ export default function CustomDatasetStudio() {
                           <th className="py-2 px-3">Train Index</th>
                           <th className="py-2 px-3">Class</th>
                           <th className="py-2 px-3">State Fidelity (F)</th>
-                          <th className="py-2 px-3">Quantum Distance (1 - F)</th>
+                          <th className="py-2 px-3">Distance (1 - F / Euclidean)</th>
                           <th className="py-2 px-3">Voting Influence</th>
                         </tr>
                       </thead>
@@ -1486,7 +1989,7 @@ export default function CustomDatasetStudio() {
                             <td className="py-2.5 px-3 text-slate-300">Index {n.train_index}</td>
                             <td className="py-2.5 px-3 text-white font-sans font-bold capitalize">{n.class_label}</td>
                             <td className="py-2.5 px-3 font-bold text-emerald-400">
-                              {n.fidelity !== null ? `${(n.fidelity * 100).toFixed(2)}%` : '--'}
+                              {n.fidelity !== null && n.fidelity !== undefined ? `${(n.fidelity * 100).toFixed(2)}%` : '-- (Euclidean)'}
                             </td>
                             <td className="py-2.5 px-3 text-amber-400">{n.quantum_distance ?? '--'}</td>
                             <td className="py-2.5 px-3 text-indigo-300">
@@ -1636,65 +2139,52 @@ export default function CustomDatasetStudio() {
           {/* Section 3: Empirical Model Performance Comparison */}
           {results && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2 text-sm font-bold text-white">
                   <GitCompare className="h-4 w-4 text-cyan-400" />
-                  <span>3. Empirical Benchmark: Classical KNN vs. PennyLane QKNN</span>
+                  <span>3. Empirical Benchmark: 5-Model Comparative Evaluation</span>
                 </div>
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-                  Winner: {results.performance_comparison?.higher_accuracy_model || 'Evaluated'}
-                </span>
+                <div className="flex items-center gap-2 text-xs">
+                  {results.best_model && (
+                    <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                      Leading: {results.best_model}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-800 text-[11px] font-bold uppercase text-slate-400 font-mono">
-                      <th className="py-2.5 px-3">Metric</th>
-                      <th className="py-2.5 px-3">Classical KNN (Scikit-Learn)</th>
-                      <th className="py-2.5 px-3">Quantum KNN (PennyLane)</th>
-                      <th className="py-2.5 px-3">Variance (Δ Q - C)</th>
+                      <th className="py-2.5 px-3">Model Architecture</th>
+                      <th className="py-2.5 px-3">Paradigm</th>
+                      <th className="py-2.5 px-3">Test Accuracy</th>
+                      <th className="py-2.5 px-3">Macro Precision</th>
+                      <th className="py-2.5 px-3">Macro Recall</th>
+                      <th className="py-2.5 px-3">Macro F1</th>
+                      <th className="py-2.5 px-3">Latency</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-mono">
-                    <tr className="hover:bg-slate-850/50">
-                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Accuracy</td>
-                      <td className="py-2.5 px-3 text-white font-bold">{(results.classical_knn.accuracy * 100).toFixed(2)}%</td>
-                      <td className="py-2.5 px-3 text-cyan-300 font-bold">{(results.quantum_knn.accuracy * 100).toFixed(2)}%</td>
-                      <td className={`py-2.5 px-3 font-bold ${results.performance_comparison?.accuracy_delta >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {results.performance_comparison?.accuracy_delta >= 0 ? '+' : ''}{(results.performance_comparison?.accuracy_delta * 100).toFixed(2)}%
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-slate-850/50">
-                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Macro F1-Score</td>
-                      <td className="py-2.5 px-3 text-white font-bold">{(results.classical_knn.f1_macro * 100).toFixed(2)}%</td>
-                      <td className="py-2.5 px-3 text-cyan-300 font-bold">{(results.quantum_knn.f1_macro * 100).toFixed(2)}%</td>
-                      <td className={`py-2.5 px-3 font-bold ${results.performance_comparison?.f1_delta >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {results.performance_comparison?.f1_delta >= 0 ? '+' : ''}{(results.performance_comparison?.f1_delta * 100).toFixed(2)}%
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-slate-850/50">
-                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Precision (Macro)</td>
-                      <td className="py-2.5 px-3 text-white font-bold">{(results.classical_knn.precision_macro * 100).toFixed(2)}%</td>
-                      <td className="py-2.5 px-3 text-cyan-300 font-bold">{(results.quantum_knn.precision_macro * 100).toFixed(2)}%</td>
-                      <td className="py-2.5 px-3 text-slate-400">
-                        {((results.quantum_knn.precision_macro - results.classical_knn.precision_macro) * 100).toFixed(2)}%
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-slate-850/50">
-                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Recall (Macro)</td>
-                      <td className="py-2.5 px-3 text-white font-bold">{(results.classical_knn.recall_macro * 100).toFixed(2)}%</td>
-                      <td className="py-2.5 px-3 text-cyan-300 font-bold">{(results.quantum_knn.recall_macro * 100).toFixed(2)}%</td>
-                      <td className="py-2.5 px-3 text-slate-400">
-                        {((results.quantum_knn.recall_macro - results.classical_knn.recall_macro) * 100).toFixed(2)}%
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-slate-850/50">
-                      <td className="py-2.5 px-3 font-sans font-bold text-slate-300">Prediction Time</td>
-                      <td className="py-2.5 px-3 text-slate-400 font-mono">{results.classical_knn.prediction_time_sec}s</td>
-                      <td className="py-2.5 px-3 text-amber-300 font-mono">{results.quantum_knn.prediction_time_sec}s</td>
-                      <td className="py-2.5 px-3 text-slate-400 font-mono">{results.performance_comparison?.latency_ratio}x ratio</td>
-                    </tr>
+                    {(results.comparison_table || []).map((m, idx) => (
+                      <tr key={idx} className="hover:bg-slate-850/50">
+                        <td className="py-2.5 px-3 font-sans font-bold text-white flex items-center gap-1.5">
+                          {m.paradigm === 'Quantum' ? <Cpu className="h-3.5 w-3.5 text-cyan-400" /> : <BarChart2 className="h-3.5 w-3.5 text-indigo-400" />}
+                          <span>{m.display_name}</span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${m.paradigm === 'Quantum' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/40' : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'}`}>
+                            {m.paradigm}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-emerald-400">{(m.accuracy * 100).toFixed(2)}%</td>
+                        <td className="py-2.5 px-3 text-slate-300">{(m.precision_macro * 100).toFixed(2)}%</td>
+                        <td className="py-2.5 px-3 text-slate-300">{(m.recall_macro * 100).toFixed(2)}%</td>
+                        <td className="py-2.5 px-3 font-bold text-white">{(m.f1_macro * 100).toFixed(2)}%</td>
+                        <td className="py-2.5 px-3 text-slate-400 font-mono">{m.latency_sec}s</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

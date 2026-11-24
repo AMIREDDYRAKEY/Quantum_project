@@ -128,6 +128,7 @@ def configure_dataset(dataset_id):
         scale_method = body.get("scale_method") or body.get("scaling") or "standard"
         sample_size = body.get("sample_size", 200)
         random_state = int(body.get("random_state", 42))
+        selected_features = body.get("selected_features") or body.get("features")
 
         config_info = DataPreprocessor.configure_and_preprocess(
             dataset_id=dataset_id,
@@ -138,6 +139,7 @@ def configure_dataset(dataset_id):
             scale_method=scale_method,
             sample_size=sample_size,
             random_state=random_state,
+            selected_features=selected_features,
         )
         return jsonify({"status": "success", "data": config_info}), 200
     except KeyError as e:
@@ -195,7 +197,8 @@ def predict_single(dataset_id):
         if not features:
             return jsonify({"status": "error", "message": "Missing 'features' dict in request body."}), 400
 
-        prediction = TrainingService.predict_single(dataset_id, features)
+        model_type = body.get("model_type") or body.get("model") or body.get("feature_map") or "hybrid"
+        prediction = TrainingService.predict_single(dataset_id, features, model_type=model_type)
         return jsonify({"status": "success", "data": prediction}), 200
     except KeyError as e:
         return jsonify({"status": "error", "message": str(e)}), 404

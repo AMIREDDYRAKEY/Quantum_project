@@ -433,15 +433,46 @@ class ReportGenerator:
         # =========================================================================
         # 3. EMPIRICAL BENCHMARK & COMPARATIVE EVALUATION
         # =========================================================================
-        story.append(Paragraph("2. Empirical Benchmark: Classical KNN vs. Quantum KNN", h1_style))
+        story.append(Paragraph("2. Empirical Multi-Model Benchmark: Classical KNN vs. 4 Quantum Feature Maps", h1_style))
         story.append(Paragraph(
             "Performance metrics computed across the identical held-out test partition with hyperparameter K = "
-            f"<b>{trained_res['k']}</b> nearest neighbors and distance-weighted voting enabled.",
+            f"<b>{trained_res['k']}</b> nearest neighbors and distance-weighted voting enabled. "
+            f"Evaluates Scikit-Learn Classical KNN alongside all four PennyLane quantum feature maps (Z, ZZ, Pauli, Hybrid).",
             body_style
         ))
 
+        # 5-Model Comprehensive Benchmark Matrix
+        comp_table = trained_res.get("comparison_table", [])
+        if comp_table:
+            bench_data = [
+                ["Evaluated Model Architecture", "Accuracy", "Precision", "Recall", "Macro F1", "Total Latency"]
+            ]
+            for row in comp_table:
+                bench_data.append([
+                    Paragraph(f"<b>{row['model_name']}</b>", body_style),
+                    f"{row['accuracy']*100:.2f}%",
+                    f"{row['precision']*100:.2f}%",
+                    f"{row['recall']*100:.2f}%",
+                    f"{row['f1_score']*100:.2f}%",
+                    f"{row['total_time_sec']:.4f} s",
+                ])
+            t_bench = Table(bench_data, colWidths=[180, 72, 72, 72, 72, 72])
+            t_bench.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0284c7")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+                ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+            ]))
+            story.append(t_bench)
+            story.append(Spacer(1, 6))
+
         metrics_data = [
-            ["Evaluation Metric", "Classical KNN (Scikit-Learn)", "Quantum KNN (PennyLane)", "Empirical Delta (Q - C)"],
+            ["Evaluation Metric", "Classical KNN (Scikit-Learn)", f"Quantum KNN ({circuit_info['feature_map'].upper()} Map)", "Empirical Delta (Q - C)"],
             ["Overall Test Accuracy", f"{c_metrics['accuracy']*100:.2f}%", f"{q_metrics['accuracy']*100:.2f}%", f"{(q_metrics['accuracy']-c_metrics['accuracy'])*100:+.2f}%"],
             ["Macro Precision", f"{c_metrics['precision_macro']*100:.2f}%", f"{q_metrics['precision_macro']*100:.2f}%", f"{(q_metrics['precision_macro']-c_metrics['precision_macro'])*100:+.2f}%"],
             ["Macro Recall", f"{c_metrics['recall_macro']*100:.2f}%", f"{q_metrics['recall_macro']*100:.2f}%", f"{(q_metrics['recall_macro']-c_metrics['recall_macro'])*100:+.2f}%"],
@@ -505,6 +536,35 @@ class ReportGenerator:
             )
 
         story.append(Paragraph(acc_eval, body_style))
+
+        # Empirical Hybrid vs Individual Quantum Feature Maps Comparison
+        hybrid_info = trained_res.get("hybrid_analysis", {})
+        best_overall = trained_res.get("best_model", "Evaluated")
+        best_q_map = trained_res.get("best_quantum_map", "Hybrid QKNN")
+
+        hybrid_eval_text = (
+            f"<b>Feature Map Investigation & Hybrid Analysis:</b> Across the four evaluated quantum feature maps, "
+            f"the highest-performing quantum ansatz was <b>{best_q_map}</b>. "
+            f"Overall leading model across both classical and quantum paradigms was <b>{best_overall}</b>.<br/>"
+            f"<b>Hybrid Feature Map Telemetry:</b> Attained test accuracy of <b>{hybrid_info.get('hybrid_accuracy', 0)*100:.2f}%</b> and "
+            f"Macro F1 of <b>{hybrid_info.get('hybrid_f1', 0)*100:.2f}%</b>. "
+            f"Relative to individual quantum feature maps, Hybrid variance was: "
+            f"<b>{hybrid_info.get('delta_vs_z_accuracy', 0)*100:+.2f}%</b> vs. Z Feature Map, "
+            f"<b>{hybrid_info.get('delta_vs_zz_accuracy', 0)*100:+.2f}%</b> vs. ZZ Feature Map, and "
+            f"<b>{hybrid_info.get('delta_vs_pauli_accuracy', 0)*100:+.2f}%</b> vs. Pauli Feature Map.<br/>"
+            f"<i>Observation:</i> {hybrid_info.get('insight', 'Feature maps produced distinct geometric boundaries in Hilbert space.')}"
+        )
+        t_hybrid = Table([[Paragraph(hybrid_eval_text, callout_style)]], colWidths=[540])
+        t_hybrid.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+            ("BOX", (0, 0), (-1, -1), 0.75, colors.HexColor("#cbd5e1")),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        story.append(t_hybrid)
+        story.append(Spacer(1, 6))
 
         # Per-Class Precision / Recall Descriptive Analysis
         q_rep = q_metrics.get("classification_report", {})
@@ -588,10 +648,12 @@ class ReportGenerator:
         circuit_desc = (
             f"The quantum state preparation stage translates classical feature vector $\\mathbf{{x}} = [x_1, \\dots, x_n]^T$ into "
             f"an entangled multi-qubit register $|\\psi(\\mathbf{{x}})\\rangle = U_{{\\Phi}}(\\mathbf{{x}})|0\\rangle^{{\\otimes n}}$. "
-            f"Under the <b>{circuit_info['feature_map'].upper()}</b> feature map, state encoding applies a composite unitary: "
+            f"Four distinct quantum feature map architectures were investigated in this study:<br/>"
+            f"&bull; <b>1. Z Feature Map:</b> First-order Pauli-Z rotations $U_Z(\\mathbf{{x}}) = \\bigotimes_i (R_Z(x_i) \\cdot H)$ creating an unentangled product state.<br/>"
+            f"&bull; <b>2. ZZ Feature Map:</b> Second-order Ising-type evolution with CNOT entanglement ladders and pairwise phase interactions $(\\pi - x_i)(\\pi - x_j)$.<br/>"
+            f"&bull; <b>3. Pauli Feature Map:</b> Non-commuting multi-axis rotations applying $R_X, R_Y, R_Z$ gates alongside CNOT coupling.<br/>"
+            f"&bull; <b>4. Hybrid Feature Map:</b> Deep composite cascade combining all three ansatzes: "
             f"$$U_{{\\text{{Hybrid}}}}(\\mathbf{{x}}) = U_{{\\text{{Pauli}}}}(\\mathbf{{x}}) \\cdot U_{{\\text{{ZZ}}}}(\\mathbf{{x}}) \\cdot U_{{\\text{{Z}}}}(\\mathbf{{x}})$$ "
-            f"where first-order Hadamard gates $H^{{\\otimes n}}$ initialize uniform superposition, single-qubit rotations "
-            f"($R_Z(\\theta_i)$, $R_X(\\theta_i)$, $R_Y(\\theta_i)$) encode feature values, and two-qubit CNOT entanglers generate non-local quantum correlations. "
             f"State overlap distance is computed via $D_Q(\\mathbf{{x}}, \\mathbf{{x}}') = 1 - |\\langle\\psi(\\mathbf{{x}})|\\phi(\\mathbf{{x}}')\\rangle|^2$."
         )
         story.append(Paragraph(circuit_desc, body_style))

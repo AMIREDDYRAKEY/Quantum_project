@@ -23,12 +23,13 @@ class DataPreprocessor:
         scale_method: str = "standard",
         sample_size: Optional[int] = 200,
         random_state: int = 42,
+        selected_features: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Executes complete end-to-end preprocessing:
-        1. Separate features and target
-        2. Impute missing values
-        3. Encode categorical features
+        1. Separate features and target (exclude target column from features)
+        2. Filter by user-selected features if specified
+        3. Impute missing values and encode categorical features
         4. Optional stratified subsampling for quantum runtime feasibility
         5. Stratified train-test split (zero data leakage)
         6. Fit scaler on X_train only, transform X_test
@@ -36,16 +37,29 @@ class DataPreprocessor:
         8. Map to quantum rotation angles [-pi, pi]
         """
         df = DatasetService.get_dataset(dataset_id).copy()
+        original_shape = [int(len(df)), int(len(df.columns))]
+        warnings_list: List[str] = []
 
         if target_column not in df.columns:
             raise ValueError(f"Target column '{target_column}' does not exist in dataset.")
 
         # Drop rows where target is missing
-        df = df.dropna(subset=[target_column])
+        n_missing_target = df[target_column].isna().sum()
+        if n_missing_target > 0:
+            warnings_list.append(f"Dropped {n_missing_target} records with missing target values.")
+            df = df.dropna(subset=[target_column])
 
         # Separate X and y
         y_raw = df[target_column]
         X_raw = df.drop(columns=[target_column])
+
+        # Filter to user-selected input features if specified
+        if selected_features and isinstance(selected_features, list) and len(selected_features) > 0:
+            valid_feats = [col for col in selected_features if col in X_raw.columns and col != target_column]
+            if len(valid_feats) > 0:
+                X_raw = X_raw[valid_feats]
+            else:
+                warnings_list.append("Specified features not found; defaulted to all available predictive features.")
 
         # Encode target classes
         label_encoder = LabelEncoder()
@@ -62,6 +76,7 @@ class DataPreprocessor:
             if X_raw[col].dtype == object and X_raw[col].nunique() == len(X_raw):
                 cols_to_drop.append(col)
         if cols_to_drop:
+            warnings_list.append(f"Excluded high-cardinality ID columns: {', '.join(cols_to_drop)}.")
             X_raw = X_raw.drop(columns=cols_to_drop)
 
         # Impute missing values & encode categorical features
@@ -176,6 +191,9 @@ class DataPreprocessor:
             "total_samples": total_samples,
             "train_samples": len(y_train),
             "test_samples": len(y_test),
+            "original_shape": original_shape,
+            "processed_shape": [total_samples, target_features],
+            "warnings": warnings_list,
             "X_train_scaled": X_train_scaled,
             "X_test_scaled": X_test_scaled,
             "X_train_reduced": X_train_reduced,
@@ -196,6 +214,8 @@ class DataPreprocessor:
         return {
             "dataset_id": dataset_id,
             "target_column": target_column,
+            "original_shape": original_shape,
+            "processed_shape": [total_samples, target_features],
             "original_feature_count": n_orig_features,
             "selected_feature_count": target_features,
             "selected_feature_names": selected_feature_names,
@@ -203,7 +223,10 @@ class DataPreprocessor:
             "train_samples": len(y_train),
             "test_samples": len(y_test),
             "classes": class_names,
+            "number_of_classes": n_classes,
+            "scale_method": scale_method,
             "sample_reduced": sample_reduced,
             "qubit_count": target_features,
+            "warnings": warnings_list,
             "explanation": explanation,
         }

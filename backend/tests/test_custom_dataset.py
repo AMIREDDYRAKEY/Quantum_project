@@ -46,6 +46,8 @@ def test_data_preprocessor(sample_df):
     )
     assert result['selected_feature_count'] <= 4
     assert result['qubit_count'] <= 4
+    assert 'original_shape' in result
+    assert 'processed_shape' in result
     session = DatasetService.get_session('test_prep_ds')
     prep_data = session['preprocessed_data']
     assert len(prep_data['X_train_reduced']) > 0
@@ -55,6 +57,16 @@ def test_data_preprocessor(sample_df):
     # Check angles are in [-pi, pi]
     assert np.all(prep_data['X_train_angles'] >= -np.pi - 1e-5)
     assert np.all(prep_data['X_train_angles'] <= np.pi + 1e-5)
+
+    # Test explicit feature selection filtering
+    res_filtered = DataPreprocessor.configure_and_preprocess(
+        dataset_id='test_prep_ds',
+        target_column='target',
+        max_features=2,
+        selected_features=['feature1', 'feature2'],
+    )
+    assert res_filtered['selected_feature_count'] == 2
+    assert set(res_filtered['selected_feature_names']) == {'feature1', 'feature2'}
 
 def test_quantum_similarity_engine():
     engine = QuantumSimilarityEngine(n_wires=2, feature_map='hybrid', depth=1)
@@ -94,10 +106,15 @@ def test_training_service(sample_df):
     )
     assert 'classical_knn' in train_res
     assert 'quantum_knn' in train_res
+    assert 'comparison_table' in train_res
+    assert len(train_res['comparison_table']) == 5
+    assert 'all_quantum_models' in train_res
+    assert 'best_model' in train_res
+    assert 'hybrid_analysis' in train_res
     assert 0.0 <= train_res['classical_knn']['accuracy'] <= 1.0
     assert 0.0 <= train_res['quantum_knn']['accuracy'] <= 1.0
 
-    # Single prediction
+    # Single prediction with default model
     test_sample = {
         'feature1': 5.1,
         'feature2': 3.5,
@@ -108,6 +125,12 @@ def test_training_service(sample_df):
     assert 'quantum_predicted_class' in pred_res
     assert 'classical_predicted_class' in pred_res
     assert len(pred_res['nearest_neighbors']) == 3
+
+    # Multi-model prediction support
+    for m in ['classical', 'z', 'zz', 'pauli', 'hybrid']:
+        m_pred = TrainingService.predict_single('train_test_ds', test_sample, model_type=m)
+        assert 'predicted_class' in m_pred
+        assert m_pred['predicted_class'] in ['class_0', 'class_1', 'class_2']
 
 def test_pdf_report_generation(sample_df):
     DatasetService.store_dataset('pdf_test_ds', sample_df, filename='pdf_test.csv')
